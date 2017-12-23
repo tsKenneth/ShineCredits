@@ -148,12 +148,12 @@ local literal_map = {
 
 
 local function next_char(str, idx, set, negate)
-    for i = idx, #str do
-        if set[str:sub(i, i)] ~= negate then
-            return i
-        end
+  for i = idx, #str do
+    if set[str:sub(i, i)] ~= negate then
+      return i
     end
-    return #str + 1
+  end
+  return #str + 1
 end
 
 

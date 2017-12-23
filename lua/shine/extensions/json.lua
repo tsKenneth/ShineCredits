@@ -148,26 +148,26 @@ local literal_map = {
 
 
 local function next_char(str, idx, set, negate)
-  for i = idx, #str do
-    if set[str:sub(i, i)] ~= negate then
-      return i
+    for i = idx, #str do
+        if set[str:sub(i, i)] ~= negate then
+            return i
+        end
     end
-  end
-  return #str + 1
+    return #str + 1
 end
 
 
 local function decode_error(str, idx, msg)
-  local line_count = 1
-  local col_count = 1
-  for i = 1, idx - 1 do
-    col_count = col_count + 1
-    if str:sub(i, i) == "\n" then
-      line_count = line_count + 1
-      col_count = 1
+    local line_count = 1
+    local col_count = 1
+    for i = 1, idx - 1 do
+        col_count = col_count + 1
+        if str:sub(i, i) == "\n" then
+            line_count = line_count + 1
+            col_count = 1
+        end
     end
-  end
-  error( string.format("%s at line %d col %d", msg, line_count, col_count) )
+    error( string.format("%s at line %d col %d", msg, line_count, col_count) )
 end
 
 

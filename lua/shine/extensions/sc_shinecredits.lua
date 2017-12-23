@@ -1,7 +1,6 @@
 local Shine = Shine
 local Plugin = {}
-local Json = require("json")
-
+local Json = require("shine/extensions/json")
 
 Plugin.Version = "1.0"
 Plugin.PrintName = "Shine Credits"
@@ -23,16 +22,14 @@ Plugin.DefaultConfig = {
     },
 
     Settings = {
-        Credits_Per_Minute = 1,
-        Items_Per_Page = 10
-    },
-
-    UserCredits = {
-
-    },
-
-    CreditMenu = {
-
+        UserCreditsSettings =  {
+            FilePath = "config://shine/ShineCredits_UserCredits.json",
+            CreditsPerMinute = 1
+        },
+        CreditsMenuSettings = {
+            FilePath = "config://shine/ShineCredits_CreditMenu.json",
+            ItemsPerPage = 10
+        }
     }
 }
 
@@ -41,14 +38,66 @@ Plugin.CheckConfigTypes = true
 
 Plugin.UserTimeTracker = {}
 Plugin.UserCredits = {}
-Plugin.CreditMenu = {}
+Plugin.CreditsMenu = {}
 
 function Plugin:Initialise()
     self:LoadConfig()
+    self.UserCredits = self:LoadUserCredits()
+    self.CreditsMenu = self:LoadCreditsMenu()
     self:CreateCommands()
-
 	return true
 end
+
+-- ==============================================
+-- ============== FileIO System =================
+-- ==============================================
+
+function Plugin:SaveTable( Table, FilePath )
+     local file = io.open(FilePath, "w")
+
+     if file then
+        local contents = Json.encode( Table )
+        file:write( contents )
+        io.close( file )
+        return true
+    else
+        return false
+    end
+end
+
+function Plugin:LoadTable( FilePath )
+    local contents = ""
+    local myTable = {}
+    local file = io.open( FilePath, "r" )
+
+    if file then
+        contents = file:read( "*a" )
+        myTable = Json.decode(contents);
+        io.close( file )
+        return myTable
+    end
+
+    self:SaveTable({}, FilePath )
+    return {}
+end
+
+function Plugin:SaveUserCredits()
+    return self:SaveTable(self.UserCredits,self.Config.Settings.UserCreditsSettings.FilePath)
+end
+
+function Plugin:LoadUserCredits()
+    return self:LoadTable(self.Config.Settings.UserCreditsSettings.FilePath)
+
+end
+
+function Plugin:SaveCreditsMenu()
+    return self:SaveTable(self.CreditsMenu,self.Config.Settings.CreditsMenuSettings.FilePath)
+end
+
+function Plugin:LoadCreditsMenu()
+    return self:LoadTable(self.Config.Settings.CreditsMenuSettings.FilePath)
+end
+
 
 -- ==============================================
 -- ============== Credits System ================
@@ -58,25 +107,31 @@ end
 -- Start credit for Player based on Steam ID
 
 function Plugin:StartCredits(SteamID)
-    Shine:Print("Credits Started")
+    local UserTimeTracker = self.UserTimeTracker
     local StartTime = Shared.GetSystemTime()
-    self.UserTimeTracker[SteamID] = StartTime
+    SteamID = tostring(SteamID)
+
+    UserTimeTracker[SteamID] = StartTime
+
+    Shine:Print("Credits Started")
 end
 
 -- Stop credit for Player based on Steam ID
 
 function Plugin:StopCredits(SteamID)
-    if self.UserTimeTracker[SteamID] == 0 then
+    local UserCreditsSettings = self.Config.Settings.UserCreditsSettings
+    local UserCredits = self.UserCredits
+    local UserTimeTracker = self.UserTimeTracker
+    SteamID = tostring(SteamID)
+
+    if UserTimeTracker[SteamID] == 0 then
         return false
     end
 
-    Shine:Print("Credits Stopped")
 
-    local ConfigFile = self.Config
-    local UserCredits = self.Config.UserCredits
     EndTime = Shared.GetSystemTime()
 
-    CreditsAwarded = math.Round((EndTime - self.UserTimeTracker[SteamID])/60, 0 ) * ConfigFile.Settings.Credits_Per_Minute
+    CreditsAwarded = math.Round((EndTime - UserTimeTracker[SteamID])/60, 0 ) * UserCreditsSettings.CreditsPerMinute
 
     if UserCredits[SteamID] ~= nil then
         UserCredits[SteamID] = UserCredits[SteamID] + CreditsAwarded
@@ -84,9 +139,10 @@ function Plugin:StopCredits(SteamID)
         UserCredits[SteamID] = CreditsAwarded
     end
 
-    Shine:Print(CreditsAwarded .. " credits awarded")
+    UserTimeTracker[SteamID] = 0
 
-    self.UserTimeTracker[SteamID] = 0
+    Shine:Print("Credits Stopped")
+    Shine:Print(CreditsAwarded .. " credits awarded")
 end
 
 -- Starts timing for all players in the playing teams
@@ -139,7 +195,7 @@ function Plugin:SetGameState( Gamerules, NewState, OldState )
 
     if NewState >= 6 and NewState < 9 then
         self:StopCreditsAllInTeam()
-        self:SaveConfig( true )
+        self:SaveUserCredits()
     end
 end
 
@@ -147,13 +203,13 @@ end
 -- Called during map change to save the changes made to the users' credits
 function Plugin:MapChange()
     self:StopCreditsAllInTeam()
-    self:SaveConfig( true )
+    self:SaveUserCredits()
 end
 
 -- Called when server disconnects / Map Change to save the changes made to the users' credits
 function Plugin:Cleanup()
     self:StopCreditsAllInTeam()
-    self:SaveConfig( true )
+    self:SaveUserCredits()
 end
 
 -- Called when the user disconnects mid-game
@@ -175,15 +231,14 @@ end
 function Plugin:CreateAdminCommands()
     local ConfigFile = self.Config
     local CommandsFile = ConfigFile.Commands
-    local UserCreditsFile = ConfigFile.UserCredits
-    local CreditMenuFile = ConfigFile.CreditMenu
 
     -- Set Credits
     local function SetCredits( Client, Targets, Amount )
+        local UserCredits = self.UserCredits
         for i = 1, #Targets do
-            SteamID = Targets[ i ]:GetUserId()
-            UserCreditsFile[SteamID] =  Amount
-            self:SaveConfig( true )
+            SteamID = tostring(Targets[ i ]:GetUserId())
+            UserCredits[SteamID] =  Amount
+            self:SaveUserCredits()
         end
     end
 	local SetCreditsCommand = self:BindCommand( CommandsFile.SetCredit.Console,
@@ -194,14 +249,15 @@ function Plugin:CreateAdminCommands()
 
     -- Add Credits
     local function AddCredits( Client, Targets, Amount )
+        local UserCredits = self.UserCredits
         for i = 1, #Targets do
-            SteamID = Targets[ i ]:GetUserId()
-            if UserCreditsFile[SteamID] ~= nil then
-                UserCreditsFile[SteamID] = UserCreditsFile[SteamID] + Amount
+            SteamID = tostring(Targets[ i ]:GetUserId())
+            if UserCredits[SteamID] ~= nil then
+                UserCredits[SteamID] = UserCredits[SteamID] + Amount
             else
-                UserCreditsFile[SteamID] = Amount
+                UserCredits[SteamID] = Amount
             end
-            self:SaveConfig( true )
+            self:SaveUserCredits()
         end
     end
 	local AddCreditsCommand = self:BindCommand( CommandsFile.AddCredit.Console,
@@ -212,14 +268,15 @@ function Plugin:CreateAdminCommands()
 
     -- Subtract Credits
     local function SubCredits( Client, Targets, Amount )
+        local UserCredits = self.UserCredits
         for i = 1, #Targets do
-            SteamID = Targets[ i ]:GetUserId()
-            if UserCreditsFile[SteamID] ~= nil then
-                UserCreditsFile[SteamID] = UserCreditsFile[SteamID] - Amount
+            SteamID = tostring(Targets[ i ]:GetUserId())
+            if UserCredits[SteamID] ~= nil then
+                UserCredits[SteamID] = UserCredits[SteamID] - Amount
             else
-                UserCreditsFile[SteamID] = Amount
+                UserCredits[SteamID] = Amount
             end
-            self:SaveConfig( true )
+            self:SaveUserCredits()
         end
     end
 	local SubCreditsCommand = self:BindCommand( CommandsFile.SubCredit.Console,
@@ -233,12 +290,13 @@ function Plugin:CreateAdminCommands()
     local function ViewItemMenu( Client , Page)
         local ItemTracker = 0
         local PageString = ""
+        local CreditsMenu = self.CreditsMenu
 
-        if Page*10 > table.Count( CreditMenuFile ) then
+        if Page*10 > table.Count( CreditsMenu ) then
             Shine:AdminPrint( Client, "No items on this page!" )
         end
 
-        for Name, Item in pairs(CreditMenuFile) do
+        for Name, Item in pairs(CreditsMenu) do
             PageString = PageString .. Name .. " " .. Item.Description .. " " .. Item.Cost .. "\n"
             ItemTracker = ItemTracker + 1
         end
@@ -253,12 +311,13 @@ function Plugin:CreateAdminCommands()
 
     -- Add Item
     local function AddItem(Client, ItemNameArg, CommandArg, DescriptionArg, CostArg)
+        local CreditsMenu = self.CreditsMenu
         if CostArg == nil or CostArg < 0 then
             return false
         end
 
-        CreditMenuFile.insert ({ItemName = ItemNameArg, Command = CommandArg, Description = DescriptionArg, Cost = CostArg})
-        self:SaveConfig( true )
+        table.insert(CreditsMenu,{ItemName = ItemNameArg, Command = CommandArg, Description = DescriptionArg, Cost = CostArg})
+        self:SaveCreditsMenu()
     end
 
 	local AddItemCommand = self:BindCommand( CommandsFile.AddItem.Console,
@@ -271,7 +330,7 @@ function Plugin:CreateAdminCommands()
 
     -- Remove Item
     local function RemoveItem(Client, ItemName)
-        self:SaveConfig( true )
+        self:SaveCreditsMenu()
     end
 
     local RemoveItemCommand = self:BindCommand( CommandsFile.RemoveItem.Console,

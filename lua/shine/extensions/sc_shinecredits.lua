@@ -47,9 +47,9 @@ Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
 
 Plugin.UserTimeTracker = {}
-Plugin.UserCredits = {}
+Plugin.PlayerCredits = {}
 Plugin.CreditsMenu = {}
-Plugin.UserRedemptions = {}
+Plugin.PlayerRedemptions = {}
 
 -- ==============================================
 -- ============== Init System ===================
@@ -57,27 +57,29 @@ Plugin.UserRedemptions = {}
 
 function Plugin:Initialise()
     self:LoadConfig()
-    self.UserCredits = self:LoadUserCredits()
+    self.PlayerCredits = self:LoadUserCredits()
     self.CreditsMenu = self:LoadCreditsMenu()
-    self.UserRedemptions = self:LoadUserRedemptions()
+    self.PlayerRedemptions = self:LoadUserRedemptions()
     self:CreateCommands()
 	return true
 end
 
 function Plugin:InitUser( Player )
+    -- Initialise local copy of global files
     local PluginSettings = self.Config.Settings
-    local UserCredits = self.UserCredits
+    local PlayerCredits = self.PlayerCredits
     local SteamID = Player:GetSteamId()
     local SteamIDStr = tostring(SteamID)
 
-
-    if UserCredits[SteamIDStr] == nil then
-        UserCredits[SteamIDStr] = {Total = 0, Current = 0}
+    -- Initialise Player's user credits if it does not exist
+    if PlayerCredits[SteamIDStr] == nil then
+        PlayerCredits[SteamIDStr] = {Total = 0, Current = 0}
     end
 
     local Target = Player:GetClient()
     local Existing, _ = Shine:GetUserData( Target )
 
+    -- Initialise Player's badges if it does not exist
     if not Existing then
         Shine:ReinstateUser(Target,SteamID)
         Shine:SaveUsers( true )
@@ -91,8 +93,9 @@ function Plugin:InitUser( Player )
         Shine:SaveUsers( true )
     end
 
-    if PluginSettings.UserRankingSettings.Enabled and UserCredits[SteamIDStr].Rank == nil then
-        UserCredits[SteamIDStr].Rank = 1
+    -- Initialise Player's rank if it does not exist
+    if PluginSettings.UserRankingSettings.Enabled and PlayerCredits[SteamIDStr].Rank == nil then
+        PlayerCredits[SteamIDStr].Rank = 1
         table.insert(Existing["Badges"]["1"], 1, "level1")
         Shine:SaveUsers( true )
     end
@@ -106,6 +109,7 @@ end
 -- ==============================================
 -- ============== FileIO System =================
 -- ==============================================
+-- Save to file
 function Plugin:SaveTable( Table, FilePath )
      local file = io.open(FilePath, "w")
 
@@ -119,24 +123,30 @@ function Plugin:SaveTable( Table, FilePath )
     end
 end
 
+-- Load from file
 function Plugin:LoadTable( FilePath )
     local contents = ""
     local myTable = {}
     local file = io.open( FilePath, "r" )
 
     if file then
+        -- If file exists
         contents = file:read( "*a" )
         myTable = Json.decode(contents);
         io.close( file )
         return myTable
+    else
+        -- If file does not exist
+        self:SaveTable({}, FilePath )
+        return {}
     end
 
-    self:SaveTable({}, FilePath )
-    return {}
+    return false
 end
 
 function Plugin:SaveUserCredits()
-    return self:SaveTable(self.UserCredits,self.Config.Settings.UserCreditsSettings.FilePath)
+    return self:SaveTable(self.PlayerCredits,
+    self.Config.Settings.UserCreditsSettings.FilePath)
 end
 
 function Plugin:LoadUserCredits()
@@ -144,7 +154,8 @@ function Plugin:LoadUserCredits()
 end
 
 function Plugin:SaveCreditsMenu()
-    return self:SaveTable(self.CreditsMenu,self.Config.Settings.CreditsMenuSettings.FilePath)
+    return self:SaveTable(self.CreditsMenu,
+    self.Config.Settings.CreditsMenuSettings.FilePath)
 end
 
 function Plugin:LoadCreditsMenu()
@@ -152,53 +163,69 @@ function Plugin:LoadCreditsMenu()
 end
 
 function Plugin:SaveUserRedemptions()
-    return self:SaveTable(self.UserRedemptions,self.Config.Settings.UserRedemptionsSettings.FilePath)
+    return self:SaveTable(self.PlayerRedemptions,
+    self.Config.Settings.UserRedemptionsSettings.FilePath)
 end
 
 function Plugin:LoadUserRedemptions()
     return self:LoadTable(self.Config.Settings.UserRedemptionsSettings.FilePath)
 end
 
-
-
-
 -- ==============================================
 -- ======== Credits System (Time-Based) =========
 -- ==============================================
--- ======= Functions to start and stop timing =======
--- Start credit for Player based on Steam ID
 
+-- ======= Functions to start and stop timing =======
+-- Start credit for Player
 function Plugin:StartCredits(Player)
+    -- Initialise local copy of global files
     local UserTimeTracker = self.UserTimeTracker
     local StartTime = Shared.GetSystemTime()
     local SteamID = tostring(Player:GetSteamId())
+
+    -- Store the time user started playing
     UserTimeTracker[SteamID] = StartTime
 end
 
--- Stop credit for Player based on Steam ID
-function Plugin:StopCredits(Player)
+-- Stop credit for Player
+function Plugin:StopCredits( Player , SaveChanges )
+    -- Initialise local copy of global files
     local UserCreditsSettings = self.Config.Settings.UserCreditsSettings
-    local UserCredits = self.UserCredits
+    local PlayerCredits = self.PlayerCredits
     local UserTimeTracker = self.UserTimeTracker
     local TotalPlaying = #Shine.GetTeamClients(1) + #Shine.GetTeamClients(2)
     local SteamID = tostring(Player:GetSteamId())
 
+    -- Check if Player Time == 0 (i.e. already been stopped)
+    -- and that game has minimum number of players required for credits to be awarded
     if UserTimeTracker[SteamID] == 0 or TotalPlaying <= UserCreditsSettings.MinimumNumberOfPlayers then
-        Shine:NotifyDualColour(Player,255,100,100,"[Shine Credits] ", 255,255,255, "No credits awarded. (Not enough players)",nil)
+        Shine:NotifyDualColour(Player,
+        255,100,100,"[Shine Credits] ",
+        255,255,255, "No credits awarded. (Not enough players)",nil)
         return false
     end
 
+    -- Calculate the amount of credits to award based on the time elapsed
+    -- and the amount to award per minute elapsed
     EndTime = Shared.GetSystemTime()
     CreditsAwarded = math.Round((EndTime - UserTimeTracker[SteamID])/60, 0 ) * UserCreditsSettings.CreditsPerMinute
-
-    UserCredits[SteamID].Total = UserCredits[SteamID].Total + CreditsAwarded
-    UserCredits[SteamID].Current = UserCredits[SteamID].Current + CreditsAwarded
-
     UserTimeTracker[SteamID] = 0
 
-    Shine:NotifyDualColour(Player,255,100,100,"[Shine Credits] ", 255,255,255, CreditsAwarded .. " credits awarded.",nil)
+    -- Reward the points accordingly
+    PlayerCredits[SteamID].Total = PlayerCredits[SteamID].Total + CreditsAwarded
+    PlayerCredits[SteamID].Current = PlayerCredits[SteamID].Current + CreditsAwarded
 
-    self:UpdatePlayerRank( Player )
+    -- Save the changes
+    if SaveChanges then
+        self:SaveUserCredits()
+    end
+
+    Shine:NotifyDualColour(Player,
+    255,100,100,"[Shine Credits] ",
+    255,255,255, CreditsAwarded .. " credits awarded.",nil)
+
+    self:UpdatePlayerRank( Player , SaveChanges)
+
 end
 
 -- Starts timing for all players in the playing teams
@@ -206,10 +233,12 @@ function Plugin:StartCreditsAllInTeam()
     local team1Players = GetGamerules():GetTeam1():GetPlayers()
     local team2Players = GetGamerules():GetTeam2():GetPlayers()
 
+    -- For all players in Marines
     for _, team1Player in ipairs(team1Players) do
         self:StartCredits(team1Player)
     end
 
+    -- For all players in Aliens
     for _, team2Player in ipairs(team2Players) do
         self:StartCredits(team2Player)
     end
@@ -222,11 +251,11 @@ function Plugin:StopCreditsAllInTeam()
     local team2Players = GetGamerules():GetTeam2():GetPlayers()
 
     for _, team1Player in ipairs(team1Players) do
-        self:StopCredits(team1Player)
+        self:StopCredits(team1Player, false)
     end
 
     for _, team2Player in ipairs(team2Players) do
-        self:StopCredits(team2Player)
+        self:StopCredits(team2Player, false)
     end
 
     self:SaveUserCredits()
@@ -236,9 +265,9 @@ end
 -- Called when a player joins a team in the midst of a game
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
     if Gamerules:GetGameStarted() then
+        -- Check if team changed to is 0: Ready room , 3:Spectators
         if (NewTeam == 0 or NewTeam == 3) then
-            self:StopCredits(Player)
-            self:SaveUserCredits()
+            self:StopCredits(Player, true)
         else
             self:StartCredits(Player)
         end
@@ -247,13 +276,14 @@ end
 
 -- Called when game starts or stops
 function Plugin:SetGameState( Gamerules, NewState, OldState )
+    -- If new state is 5:"Game Started"
     if NewState == 5 then
         self:StartCreditsAllInTeam()
     end
 
+    -- If new state is 6:"Team 1 victory", 7:"Team 2 Victory" or 8:"Draw"
     if NewState >= 6 and NewState < 9 then
         self:StopCreditsAllInTeam()
-        self:SaveUserCredits()
     end
 end
 
@@ -261,13 +291,11 @@ end
 -- Called during map change to save the changes made to the users' credits
 function Plugin:MapChange()
     self:StopCreditsAllInTeam()
-    self:SaveUserCredits()
 end
 
 -- Called when server disconnects / Map Change to save the changes made to the users' credits
 function Plugin:Cleanup()
     self:StopCreditsAllInTeam()
-    self:SaveUserCredits()
 end
 
 -- Called when the user disconnects mid-game
@@ -279,36 +307,58 @@ end
 -- ============= Ranking System =================
 -- ==============================================
 -- Update players' rank based on their total credits
-function Plugin:UpdatePlayerRank( Player )
+function Plugin:UpdatePlayerRank( Player , SaveChanges )
+    -- Initialise local copy of global files
     local ConfigFile = self.Config
-    local UserCredits = self.UserCredits
+    local PlayerCredits = self.PlayerCredits
     local UserRankingSettings = ConfigFile.Settings.UserRankingSettings
 
+    -- Checks if User Ranking System is Enabled
     if not UserRankingSettings.Enabled then
         return false
     end
 
+    -- Obtain pre-requisite data on player
     local Target = Player:GetClient()
     local Existing, SteamID = Shine:GetUserData( Target )
     SteamID = tostring(SteamID)
-    local CurrentRank = UserCredits[SteamID].Rank
+    local CurrentRank = PlayerCredits[SteamID].Rank
 
-    while (UserCredits[SteamID].Total > (UserCredits[SteamID].Rank^UserRankingSettings.PowerFactor)) do
-        UserCredits[SteamID].Rank = UserCredits[SteamID].Rank + 1
+    -- Checks which way to update the user's rank
+    if PlayerCredits[SteamID].Total < PlayerCredits[SteamID].Rank^UserRankingSettings.PowerFactor then
+        -- When player's total credits is less than Rank's required credits:
+        -- Decrease player's rank by 1 until user's credits is equivalent to the required amount
+        while (PlayerCredits[SteamID].Total < (PlayerCredits[SteamID].Rank^UserRankingSettings.PowerFactor))
+        and PlayerCredits[SteamID].Rank ~= 1 do
+            PlayerCredits[SteamID].Rank = PlayerCredits[SteamID].Rank - 1
+        end
+    else
+        -- When player's total credits is more than Rank's required credits:
+        --Increase player's rank by 1 until user's credits is equivalent to the required amount
+        while (PlayerCredits[SteamID].Total > (PlayerCredits[SteamID].Rank^UserRankingSettings.PowerFactor))
+        and PlayerCredits[SteamID].Rank ~= UserRankingSettings.MaxRank do
+            PlayerCredits[SteamID].Rank = PlayerCredits[SteamID].Rank + 1
+        end
     end
 
-    if CurrentRank ~= UserCredits[SteamID].Rank then
-        local NewBadgeName = "level" .. UserCredits[SteamID].Rank
+    -- If player's rank has changed, perform badge change
+    if CurrentRank ~= PlayerCredits[SteamID].Rank then
+        local NewBadgeName = "level" .. PlayerCredits[SteamID].Rank
         table.remove(Existing["Badges"]["1"], 1)
         table.insert(Existing["Badges"]["1"], 1, NewBadgeName)
 
-        Shine:SaveUsers( true )
+        -- Notify user of the rank up
         Shine:NotifyDualColour(Player,255,100,100,"[Shine Credits] ", 255,150,150, "Ranked up to Rank "
-        .. UserCredits[SteamID].Rank
+        .. PlayerCredits[SteamID].Rank
         .. " (badge will be refreshed when map changes)"  , nil)
+
+        -- Save changes
+        if SaveChanges then
+            Shine:SaveUsers( true )
+        end
+
         return true
     end
-
     return false
 end
 
@@ -439,10 +489,10 @@ function Plugin:CreateCreditsCommands()
 
     -- Set Credits
     local function SetCredits( Client, Targets, Amount )
-        local UserCredits = self.UserCredits
+        local PlayerCredits = self.PlayerCredits
         for i = 1, #Targets do
             SteamID = tostring(Targets[ i ]:GetUserId())
-            UserCredits[SteamID] =  Amount
+            PlayerCredits[SteamID] =  Amount
             self:SaveUserCredits()
             self:UpdatePlayerRank( Targets[i]:GetControllingPlayer() )
         end
@@ -455,13 +505,13 @@ function Plugin:CreateCreditsCommands()
 
     -- Add Credits
     local function AddCredits( Client, Targets, Amount )
-        local UserCredits = self.UserCredits
+        local PlayerCredits = self.PlayerCredits
         for i = 1, #Targets do
             SteamID = tostring(Targets[ i ]:GetUserId())
-            if UserCredits[SteamID] ~= nil then
-                UserCredits[SteamID] = UserCredits[SteamID] + Amount
+            if PlayerCredits[SteamID] ~= nil then
+                PlayerCredits[SteamID] = PlayerCredits[SteamID] + Amount
             else
-                UserCredits[SteamID] = Amount
+                PlayerCredits[SteamID] = Amount
             end
             self:SaveUserCredits()
             self:UpdatePlayerRank( Targets[i]:GetControllingPlayer() )
@@ -475,13 +525,13 @@ function Plugin:CreateCreditsCommands()
 
     -- Subtract Credits
     local function SubCredits( Client, Targets, Amount )
-        local UserCredits = self.UserCredits
+        local PlayerCredits = self.PlayerCredits
         for i = 1, #Targets do
             SteamID = tostring(Targets[ i ]:GetUserId())
-            if UserCredits[SteamID] ~= nil then
-                UserCredits[SteamID] = UserCredits[SteamID] - Amount
+            if PlayerCredits[SteamID] ~= nil then
+                PlayerCredits[SteamID] = PlayerCredits[SteamID] - Amount
             else
-                UserCredits[SteamID] = Amount
+                PlayerCredits[SteamID] = Amount
             end
             self:SaveUserCredits()
             self:UpdatePlayerRank( Targets[i]:GetControllingPlayer() )
@@ -495,9 +545,9 @@ function Plugin:CreateCreditsCommands()
 
     -- View Credits
     local function ViewCredits( Client )
-        local UserCredits = self.UserCredits
+        local PlayerCredits = self.PlayerCredits
         local UserSteamID = tostring(Client:GetUserId())
-        local Credits = UserCredits[UserSteamID]
+        local Credits = PlayerCredits[UserSteamID]
         if Credits == nil then
             Credits = {Total = 0, Current = 0}
         end

@@ -376,5 +376,43 @@ function json.decode(str)
   return parse(str, next_char(str, 1, space_chars, true))
 end
 
+-------------------------------------------------------------------------------
+-- Helper Functions
+-------------------------------------------------------------------------------
+-- Save to file
+function json.SaveTable( Table, FilePath )
+     local file = io.open(FilePath, "w")
+
+     if file then
+        local contents = json.encode( Table )
+        file:write( contents )
+        io.close( file )
+        return true
+    else
+        return false
+    end
+end
+
+-- Load from file
+function json.LoadTable( FilePath )
+    local contents = ""
+    local myTable = {}
+    local file = io.open( FilePath, "r" )
+
+    if file then
+        -- If file exists
+        contents = file:read( "*a" )
+        myTable = json.decode(contents);
+        io.close( file )
+        return myTable
+    else
+        -- If file does not exist
+        json.SaveTable({}, FilePath )
+        return {}
+    end
+
+    return false
+end
+
 
 return json

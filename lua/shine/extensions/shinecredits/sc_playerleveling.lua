@@ -1,6 +1,6 @@
--- ==============================================
--- ============= Ranking System =================
--- ==============================================
+-- ============================================================================
+-- ============= Leveling System ==============================================
+-- ============================================================================
 -- Update players' Level based on their total credits accumulated
 
 local Shine = Shine
@@ -92,6 +92,15 @@ end
 -- ============================================================================
 -- Helper Functions
 -- ============================================================================
+-- ============================================================================
+-- PlayerLeveling:GetPlayerLevel:
+-- Returns the level of the player
+-- ============================================================================
+function PlayerLeveling:GetPlayerLevel( Player )
+    return self.PlayerLevelingFile[tostring(Player:GetSteamId())].Level
+end
+
+
 -- ============================================================================
 -- PlayerLeveling:GetAllowedForLeveling:
 -- Checks if the player belongs to a user group that has leveling suspended or
@@ -209,7 +218,7 @@ end
 -- ============================================================================
 
 function PlayerLeveling:UpdatePlayerLevel( Player ,
-    PlayerTotalCredits, SaveChanges )
+    PlayerTotalCredits)
 
     -- Initialise local variables with global values
     local PlayerLevelingFile = self.PlayerLevelingFile
@@ -231,11 +240,7 @@ function PlayerLeveling:UpdatePlayerLevel( Player ,
     local Existing, SteamID = Shine:GetUserData( Target )
     SteamID = tostring(SteamID)
 
-    if not PlayerLevelingFile[SteamID] then
-        PlayerLevelingFile[SteamID] = {Level=1}
-    end
-
-    local PreviousLevel = PlayerLevelingFile[SteamID].Level
+    local PreviousLevel = PlayerLevelingFile[SteamID].Level or 0
 
     -- Determine the player's correct level
     local CustomFormula = Settings.Formula.CustomFormula

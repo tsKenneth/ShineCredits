@@ -3,6 +3,9 @@ local Plugin = {}
 local sc_json = require("shine/extensions/shinecredits/sc_jsonfileio")
 local sc_playerleveling = require("shine/extensions/shinecredits/sc_playerleveling")
 local sc_notification = require("shine/extensions/shinecredits/sc_notification")
+local sc_badges = require("shine/extensions/shinecredits/sc_badgesmenu")
+--local sc_commanditems = require("shine/extensions/shinecredits/sc_commanditemsmenu")
+--local sc_skins = require("shine/extensions/shinecredits/sc_skinsmenu")
 
 Plugin.Version = "1.0"
 Plugin.PrintName = "Shine Credits"
@@ -11,16 +14,14 @@ Plugin.HasConfig = true
 Plugin.ConfigName = "ShineCredits.json"
 
 Plugin.DefaultConfig = {
-    Commands = {
-        SetCredits = {Console  = "sh_setcredits", Chat = "SetCredits"},
-        ViewCredits = {Console  = "sh_viewcredits", Chat = "ViewCredits"},
-        AddCredits = {Console  = "sh_addcredits", Chat = "addcredit"},
-        SubCredits = {Console  = "sh_subcredits", Chat = "SubCredits"},
-        AddItem = {Console  = "sh_additem", Chat = "additem"},
-        RemoveItem = {Console  = "sh_removeitem", Chat = "removeitem"},
-        ViewItemMenu = {Console  = "sh_creditmenu", Chat = "creditmenu"}
+    Storage = {
+        Mode = "Files",
+        WebServer = {
+            Host = nil,
+            Method = nil,
+            Password = nil
+        }
     },
-
     Settings = {
         PlayerLeveling =
         {
@@ -42,21 +43,57 @@ Plugin.DefaultConfig = {
                 AllowLevelingForGroup = nil
             },
             Notifications = {
-                LevelChange = "Leveled to %s!" ..
+                LevelChange = "Leveled to level %s!" ..
                     " (badge will be refreshed when map changes)"
+            },
+            Commands = {
+                SuspendLevelForPlayer = {Console  = "sh_suspendlevel", Chat = "suspendlevel"}
             }
         },
-        UserCreditsSettings =  {
+        PlayerCredits =  {
             FilePath = "config://shine/plugins/ShineCredits_UserCredits.json",
-            CreditsPerMinute = 1,
-            MinimumNumberOfPlayers = 0
-        },
-        UserRedemptionsSettings = {
-            FilePath = "config://shine/plugins/ShineCredits_UserRedemptions.json",
-        },
-        CreditsMenuSettings = {
-            FilePath = "config://shine/plugins/ShineCredits_CreditMenu.json",
-            ItemsPerPage = 10
+
+            AwardModes = {
+                ModeSelected = "Time",
+                Time = {
+                    CreditsPerMinute = 1
+                },
+                Score = {
+                    CreditsPerScoreEarned = 0.01
+                },
+                HybridScore = {
+                    CreditsPerMinute = 1,
+                    CreditsPerScoreEarned = 0.01
+                },
+                SiegeScore = {
+                    PerTresSpent = 0.1,
+                    PerRawDamageInflictedToPlayers = 0.1,
+                    PerPercentageTotalHealthInflictedToPlayers = 0.1,
+                    SpecialPlayers = nil,
+                    MultiplierForSpecialPlayers = 1.5,
+                    PerRawDamageInflictedToStructures = 0.1,
+                    PerPercentageTotalHealthInflictedToStructures = 0.1,
+                    SpecialStructures = {"Tunnel","PhaseGate","Hive","CommandStation"},
+                    MultiplierForSpecialStructures = 1.5,
+                    AlienPerPercentageHealed = 0.5,
+                    MarinesPerPercentageHealed = 1,
+                    AlienPerPercentageBuilt = 1,
+                    MarinesPerPercentageBuilt = 0.5,
+                    TimeMultiplierFactor = 1.1,
+                    VictoryBase = 10,
+                    VictoryMultiplier = 1.2,
+                    CommanderBase = 10,
+                    CommanderMultiplier = 1.2
+
+                }
+            },
+            MinimumNumberOfPlayers = 0,
+            Commands = {
+                SetCredits = {Console  = "sh_setcredits", Chat = "setcredits"},
+                ViewCredits = {Console  = "sh_viewcredits", Chat = "viewcredits"},
+                AddCredits = {Console  = "sh_addcredits", Chat = "addcredit"},
+                SubCredits = {Console  = "sh_subcredits", Chat = "subcredits"},
+            },
         },
         Notification =
         {
@@ -70,6 +107,43 @@ Plugin.DefaultConfig = {
                 NameRGB = {255,20,30}
             }
 
+        },
+        RedemptionMenus =
+        {
+            FilePath = "config://shine/plugins/ShineCredits_RedemptionMenus.json",
+            UserRedemptions = {
+                FilePath = "config://shine/plugins/ShineCredits_UserRedemptions.json"
+            },
+            BadgesMenu = {
+                Enabled = true,
+                ReservedBadges = nil,
+                ItemsPerPage = 10,
+                Commands = {
+                    AddBadgeToMenu = {Console = "sh_addbadge", Chat = "addbadge"},
+                    RemoveBadgeFromMenu = {Console = "sh_removebadge", Chat = "removebadge"},
+                    ViewBadgesMenu = {Console = "sh_viewbadgse", Chat = "viewbadges"}
+                }
+            },
+            CommandsMenu = {
+                Enabled = false,
+                RestrictedCommands = nil,
+                ItemsPerPage = 10,
+                CommandItems = {
+                    AddCommandItemToMenu = {Console = "sh_addcommanditem", Chat = "addcommanditem"},
+                    RemoveCommandItemFromMenu = {Console = "sh_removecommanditem", Chat = "removecommanditem"},
+                    ViewCommandItemsMenu = {Console = "sh_viewcommanditems", Chat = "viewcommanditems"}
+                }
+            },
+            SkinsMenu = {
+                Enabled = false,
+                ReservedSkins = nil,
+                ItemsPerPage = 10,
+                Commands = {
+                    AddSkinToMenu = {Console = "sh_addskin", Chat = "addskin"},
+                    RemoveSkinFromMenu = {Console = "sh_removeskin", Chat = "removeskin"},
+                    ViewSkinsMenu = {Console = "sh_viewskins", Chat = "viewskins"}
+                }
+            }
         }
     }
 }
@@ -77,10 +151,8 @@ Plugin.DefaultConfig = {
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
 
-Plugin.UserTimeTracker = {}
+Plugin.PlayerTimeTracker = {}
 Plugin.PlayerCredits = {}
-Plugin.CreditsMenu = {}
-Plugin.PlayerRedemptions = {}
 
 -- ==============================================
 -- ============== Init System ===================
@@ -89,17 +161,17 @@ Plugin.PlayerRedemptions = {}
 function Plugin:Initialise()
     self:LoadConfig()
     self.PlayerCredits = self:LoadUserCredits()
-    self.CreditsMenu = self:LoadCreditsMenu()
-    self.PlayerRedemptions = self:LoadUserRedemptions()
     sc_playerleveling:Initialise(self.Config.Settings.PlayerLeveling)
     sc_notification:Initialise(self.Config.Settings.Notification)
+    sc_badges:Initialise(self.Config.Settings.RedemptionMenus, self)
+    -- sc_commanditems:Initialise(self.Config.Settings.RedemptionMenus, self)
+    -- sc_skins:Initialise(self.Config.Settings.RedemptionMenus, self)
     self:CreateCommands()
 	return true
 end
 
 function Plugin:InitUser( Player )
     -- Initialise local copy of global files
-    local PluginSettings = self.Config.Settings
     local PlayerCredits = self.PlayerCredits
     local SteamID = Player:GetSteamId()
     local SteamIDStr = tostring(SteamID)
@@ -125,14 +197,6 @@ function Plugin:InitUser( Player )
         Existing["Badges"]["2"] = {}
         Shine:SaveUsers( true )
     end
-
-    -- Initialise Player's rank if it does not exist
-    if PluginSettings.PlayerLeveling.Enabled
-        and PlayerCredits[SteamIDStr].Total == 0 then
-
-        table.insert(Existing["Badges"]["1"], 1, "level1")
-        Shine:SaveUsers( true )
-    end
 end
 
 function Plugin:ClientConnect( Client )
@@ -146,29 +210,11 @@ end
 
 function Plugin:SaveUserCredits()
     return sc_json.SaveTable(self.PlayerCredits,
-    self.Config.Settings.UserCreditsSettings.FilePath)
+    self.Config.Settings.PlayerCredits.FilePath)
 end
 
 function Plugin:LoadUserCredits()
-    return sc_json.LoadTable(self.Config.Settings.UserCreditsSettings.FilePath)
-end
-
-function Plugin:SaveCreditsMenu()
-    return sc_json.SaveTable(self.CreditsMenu,
-    self.Config.Settings.CreditsMenuSettings.FilePath)
-end
-
-function Plugin:LoadCreditsMenu()
-    return sc_json.LoadTable(self.Config.Settings.CreditsMenuSettings.FilePath)
-end
-
-function Plugin:SaveUserRedemptions()
-    return sc_json.SaveTable(self.PlayerRedemptions,
-    self.Config.Settings.UserRedemptionsSettings.FilePath)
-end
-
-function Plugin:LoadUserRedemptions()
-    return sc_json.LoadTable(self.Config.Settings.UserRedemptionsSettings.FilePath)
+    return sc_json.LoadTable(self.Config.Settings.PlayerCredits.FilePath)
 end
 
 -- ==============================================
@@ -179,37 +225,38 @@ end
 -- Start credit for Player
 function Plugin:StartCredits(Player)
     -- Initialise local copy of global files
-    local UserTimeTracker = self.UserTimeTracker
+    local PlayerTimeTracker = self.PlayerTimeTracker
     local StartTime = Shared.GetSystemTime()
     local SteamID = tostring(Player:GetSteamId())
 
     -- Store the time user started playing
-    UserTimeTracker[SteamID] = StartTime
+    PlayerTimeTracker[SteamID] = StartTime
 end
 
 -- Stop credit for Player
 function Plugin:StopCredits( Player )
     -- Initialise local copy of global files
-    local UserCreditsSettings = self.Config.Settings.UserCreditsSettings
+    local PlayerCreditsSettings = self.Config.Settings.PlayerCredits
     local PlayerCredits = self.PlayerCredits
-    local UserTimeTracker = self.UserTimeTracker
+    local PlayerTimeTracker = self.PlayerTimeTracker
     local TotalPlaying = #Shine.GetTeamClients(1) + #Shine.GetTeamClients(2)
     local SteamID = tostring(Player:GetSteamId())
 
     -- Check if Player Time == 0 (i.e. already been stopped)
     -- and that game has minimum number of players required for credits to be awarded
-    if UserTimeTracker[SteamID] == 0 or TotalPlaying <= UserCreditsSettings.MinimumNumberOfPlayers then
-        Shine:NotifyDualColour(Player,
-        255,100,100,"[Shine Credits] ",
-        255,255,255, "No credits awarded. (Not enough players)",nil)
+    if PlayerTimeTracker[SteamID] == 0 or TotalPlaying <= PlayerCreditsSettings.MinimumNumberOfPlayers then
+        sc_notification:Notify(Player,
+            "No credits awarded. (Minimum players: " ..
+            PlayerCreditsSettings.MinimumNumberOfPlayers ..
+            " required)")
         return false
     end
 
     -- Calculate the amount of credits to award based on the time elapsed
     -- and the amount to award per minute elapsed
     EndTime = Shared.GetSystemTime()
-    CreditsAwarded = math.Round((EndTime - UserTimeTracker[SteamID])/60, 0 ) * UserCreditsSettings.CreditsPerMinute
-    UserTimeTracker[SteamID] = 0
+    CreditsAwarded = math.Round((EndTime - PlayerTimeTracker[SteamID])/60, 0 ) * PlayerCreditsSettings.CreditsPerMinute
+    PlayerTimeTracker[SteamID] = 0
 
     -- Reward the points accordingly
     PlayerCredits[SteamID].Total = PlayerCredits[SteamID].Total + CreditsAwarded
@@ -218,10 +265,6 @@ function Plugin:StopCredits( Player )
     self:SaveUserCredits()
 
     sc_notification:Notify(Player, CreditsAwarded .. " credits awarded.")
-
-    Shine:NotifyDualColour(Player,
-    255,100,100,"[Shine Credits] ",
-    255,255,255, CreditsAwarded .. " credits awarded.",nil)
 
     sc_playerleveling:UpdatePlayerLevel( Player ,
         PlayerCredits[SteamID].Total)
@@ -301,134 +344,22 @@ function Plugin:ClientDisconnect( Client )
     self:StopCredits(Client:GetControllingPlayer())
 end
 
-
--- ==============================================
--- ============ Redemption System ===============
--- ==============================================
-
 -- ==============================================
 -- ============== Commands ======================
 -- ==============================================
 -- Create the relevant commands for navigating the Shine Credit system
 function Plugin:CreateCommands()
-    self:CreateMenuCommands()
     self:CreateCreditsCommands()
-end
-
--- ======= Menu System ========
-function Plugin:CreateMenuCommands()
-    local ConfigFile = self.Config
-    local CommandsFile = ConfigFile.Commands
-
-    -- View Menu
-    local function ViewItemMenu( Client , Page)
-        local ItemIndex = 1
-        local PageString = string.format("\n| %5s | %52s | %80s | %10s |\n","Index","Name", "Description", "Cost")
-        local CreditsMenu = self.CreditsMenu
-
-        if (Page-1)*10 > table.Count( CreditsMenu ) then
-            Shine:AdminPrint( Client, "No items on this page!" )
-        end
-
-        for Name, Item in pairs(CreditsMenu) do
-            PageString = PageString .. string.format("| %7s | %50s | %75s | %10s |\n",ItemIndex, Item.Name, Item.Description, Item.Cost)
-            ItemIndex = ItemIndex + 1
-        end
-        Shine:AdminPrint( Client, PageString )
-    end
-
-    local ViewItemMenuCommand = self:BindCommand( CommandsFile.ViewItemMenu.Console,
-        CommandsFile.ViewItemMenu.Chat, ViewItemMenu )
-    ViewItemMenuCommand:AddParam{ Type = "number", Optional = true, Default = 1, Help = "Page Number" }
-    ViewItemMenuCommand:Help( "View items redeemable with credits" )
-
-    -- ====== Badges Submenu ======
-    local function AddBadge(Client, BadgeNameArg, DescriptionArg, CostArg)
-        local CreditsMenu = self.CreditsMenu
-        if CostArg == nil or CostArg < 0 then
-            return false
-        end
-
-        if CreditsMenu.Badges == nil then
-            CreditsMenu.Badges = {}
-        end
-
-        table.insert(CreditsMenu.Badges,{Name = BadgeNameArg, Description = DescriptionArg, Cost = CostArg})
-        self:SaveCreditsMenu()
-    end
-
-	local AddBadgeCommand = self:BindCommand( CommandsFile.AddItem.Console,
-        CommandsFile.AddItem.Chat, AddBadge )
-    AddBadgeCommand:AddParam{ Type = "string", Help = "Badge Name (As per in Badges Mod)" }
-    AddBadgeCommand:AddParam{ Type = "string", Help = "Description" }
-    AddBadgeCommand:AddParam{ Type = "number", Help = "Integer" }
-	AddBadgeCommand:Help( "Adds a new badge to the menu with the badge name, description and cost provided" )
-
-    -- ====== Command Submenu =====
-    local function AddCommandItem(Client, NameArg, CommandArg, DescriptionArg, CostArg)
-        local CreditsMenu = self.CreditsMenu
-        if CostArg == nil or CostArg < 0 then
-            return false
-        end
-
-        if CreditsMenu.Commands == nil then
-            CreditsMenu.Commands = {}
-        end
-
-        table.insert(CreditsMenu.Commands,{Name = NameArg, Command = CommandArg, Description = DescriptionArg, Cost = CostArg})
-        self:SaveCreditsMenu()
-    end
-
-	local AddCommandItemCommand = self:BindCommand( CommandsFile.AddItem.Console,
-        CommandsFile.AddItem.Chat, AddCommandItem )
-    AddCommandItemCommand:AddParam{ Type = "string", Help = "Name" }
-    AddCommandItemCommand:AddParam{ Type = "string", Help = "Shine Command" }
-    AddCommandItemCommand:AddParam{ Type = "string", Help = "Description" }
-    AddCommandItemCommand:AddParam{ Type = "number", Help = "Integer" }
-	AddCommandItemCommand:Help( "Adds a new command to the menu with the name, shine command, description and cost provided" )
-
-    -- ====== Skin Submenu ========
-
-    -- WIP
-
-    -- Add Item
-    local function AddItem(Client, NameArg, CommandArg, DescriptionArg, CostArg)
-        local CreditsMenu = self.CreditsMenu
-        if CostArg == nil or CostArg < 0 then
-            return false
-        end
-
-        table.insert(CreditsMenu,{Name = NameArg, Command = CommandArg, Description = DescriptionArg, Cost = CostArg})
-        self:SaveCreditsMenu()
-    end
-
-	local AddItemCommand = self:BindCommand( CommandsFile.AddItem.Console,
-        CommandsFile.AddItem.Chat, AddItem )
-    AddItemCommand:AddParam{ Type = "string", Help = "Name" }
-    AddItemCommand:AddParam{ Type = "string", Help = "Shine Command" }
-    AddItemCommand:AddParam{ Type = "string", Help = "Description" }
-    AddItemCommand:AddParam{ Type = "number", Help = "Integer" }
-	AddItemCommand:Help( "Adds a new item to the menu with the name, command, description and cost provided" )
-
-    -- Remove Item
-    local function RemoveItem(Client, ItemName)
-        self:SaveCreditsMenu()
-    end
-
-    local RemoveItemCommand = self:BindCommand( CommandsFile.RemoveItem.Console,
-        CommandsFile.RemoveItem.Chat, RemoveItem )
-    RemoveItemCommand:AddParam{ Type = "string", Help = "Name" }
-	RemoveItemCommand:Help( "Removes an item from the menu with the name specified" )
 end
 
 -- ======= Credits System =======
 function Plugin:CreateCreditsCommands()
     local ConfigFile = self.Config
-    local CommandsFile = ConfigFile.Commands
+    local CommandsFile = ConfigFile.Settings.PlayerCredits.Commands
+    local PlayerCredits = self.PlayerCredits
 
     -- Set Credits
     local function SetCredits( Client, Targets, Amount )
-        local PlayerCredits = self.PlayerCredits
         for i = 1, #Targets do
             SteamID = tostring(Targets[ i ]:GetUserId())
             PlayerCredits[SteamID] =  Amount
@@ -444,16 +375,12 @@ function Plugin:CreateCreditsCommands()
 
     -- Add Credits
     local function AddCredits( Client, Targets, Amount )
-        local PlayerCredits = self.PlayerCredits
         for i = 1, #Targets do
             SteamID = tostring(Targets[ i ]:GetUserId())
-            if PlayerCredits[SteamID] ~= nil then
-                PlayerCredits[SteamID] = PlayerCredits[SteamID] + Amount
-            else
-                PlayerCredits[SteamID] = Amount
-            end
+            PlayerCredits[SteamID].Total = PlayerCredits[SteamID].Total + Amount
+            PlayerCredits[SteamID].Current = PlayerCredits[SteamID].Current + Amount
             self:SaveUserCredits()
-            self:UpdatePlayerRank( Targets[i]:GetControllingPlayer() )
+            sc_playerleveling:UpdatePlayerLevel( Targets[i]:GetControllingPlayer(), PlayerCredits[SteamID].Total )
         end
     end
 	local AddCreditsCommand = self:BindCommand( CommandsFile.AddCredits.Console,
@@ -464,47 +391,37 @@ function Plugin:CreateCreditsCommands()
 
     -- Subtract Credits
     local function SubCredits( Client, Targets, Amount )
-        local PlayerCredits = self.PlayerCredits
         for i = 1, #Targets do
             SteamID = tostring(Targets[ i ]:GetUserId())
-            if PlayerCredits[SteamID] ~= nil then
-                PlayerCredits[SteamID] = PlayerCredits[SteamID] - Amount
-            else
-                PlayerCredits[SteamID] = Amount
-            end
+            PlayerCredits[SteamID].Total = PlayerCredits[SteamID].Total - Amount
+            PlayerCredits[SteamID].Current = PlayerCredits[SteamID].Current - Amount
             self:SaveUserCredits()
-            self:UpdatePlayerRank( Targets[i]:GetControllingPlayer() )
+            sc_playerleveling:UpdatePlayerLevel( Targets[i]:GetControllingPlayer(), PlayerCredits[SteamID].Total )
         end
     end
 	local SubCreditsCommand = self:BindCommand( CommandsFile.SubCredits.Console,
         CommandsFile.SubCredits.Chat, SubCredits )
     SubCreditsCommand:AddParam{ Type = "clients", Help = "Player(s)" }
-    SubCreditsCommand:AddParam{ Type = "number", Help = "Integer" }
+    SubCreditsCommand:AddParam{ Type = "number", Help = "Credits:Integer" }
 	SubCreditsCommand:Help( "Subtracts credits from the specified player(s)" )
 
     -- View Credits
     local function ViewCredits( Client )
-        local PlayerCredits = self.PlayerCredits
-        local UserSteamID = tostring(Client:GetUserId())
-        local Credits = PlayerCredits[UserSteamID]
-        if Credits == nil then
-            Credits = {Total = 0, Current = 0}
-        end
-        local ViewString = "Info for " .. Shine.GetClientInfo( Client ) .. "\n"
-        .. "Total Credits: " .. Credits.Total
-        .. " | Current Credits: " .. Credits.Current .. " | Rank: " .. Credits.Rank
+        local LocalPlayer = Client:GetControllingPlayer()
+        local LocalSteamID = tostring(LocalPlayer:GetSteamId())
 
-        Shine:NotifyDualColour(Client:GetControllingPlayer(),255,100,100,"[Shine Credits] ", 255,255,255, ViewString ,nil)
-        Shine:AdminPrint( Client, ViewString )
+        local ViewString = "Info for " .. Shine.GetClientInfo( Client ) .. "\n"
+        .. "Total Credits: " .. PlayerCredits[LocalSteamID].Total
+        .. " | Current Credits: " .. PlayerCredits[LocalSteamID].Current
+        .. " | Level: " .. sc_playerleveling:GetPlayerLevel(LocalPlayer)
+
+        sc_notification:Notify(LocalPlayer, ViewString)
+        sc_notification:ConsoleMessage( LocalPlayer, ViewString )
     end
 
     local ViewCreditsCommand = self:BindCommand( CommandsFile.ViewCredits.Console,
         CommandsFile.ViewCredits.Chat, ViewCredits )
     ViewCreditsCommand:Help( "View Credits" )
-
-
-
-
 
 end
 

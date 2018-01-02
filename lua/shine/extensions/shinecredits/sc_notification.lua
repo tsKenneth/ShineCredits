@@ -1,7 +1,7 @@
 -- ============================================================================
 -- ============= Notification System ==========================================
 -- ============================================================================
--- Helper functions to notify users of changes in the system
+-- Helper File to notify users of changes in the system
 
 local Shine = Shine
 local Notification = { _version = "0.1.0" }
@@ -67,6 +67,36 @@ function Notification:Notify( Receiver, Message, MessageRGB, Sender,
         SendRGB[1], SendRGB[2], SendRGB[3], Send,
         MsgRGB[1], MsgRGB[2], MsgRGB[3], Msg,
         nil)
+
+    return true
+end
+
+-- ============================================================================
+-- Notification:ConsoleMessage:
+-- Sends a console message to the player
+-- ============================================================================
+function Notification:ConsoleMessage( Receiver, Message )
+    -- Check if notification is enabled
+    if not self.Settings.Enabled then
+        return false
+    end
+
+    -- Initialise local variables with global values
+    local Settings = self.Settings
+
+    -- Check if optional parameters are filled
+    local Msg = Message or Settings.Message.Default or ""
+
+    -- Check if Sender name is not String and Message is not String
+    -- Throw error if either is true
+    if type(Message) ~= "string" then
+        error("ShineCredits sc_notification.lua: Message is not a string.")
+        return false
+    end
+
+    -- Commit to the action: send console message to the player with
+    -- the specified settings
+    Shine:AdminPrint( Receiver:GetClient() , Msg )
 
     return true
 end

@@ -24,11 +24,12 @@ PlayerLeveling.Settings =
         Maximum = 55,
         LevelBadgeNamePrefix = "level",
         LevelBadgeNameSuffix = "",
-        CustomLevelBadgesOrder = nil
+        BadgeRow = "1",
+        CustomLevelBadgesOrder = {}
     },
     Permissions = {
-        SuspendLevelingForGroup = nil,
-        AllowLevelingForGroup = nil
+        SuspendLevelingForGroups = {},
+        AllowLevelingForGroups = {}
     },
     Notifications = {
         LevelChange = "Leveled to %s!" ..
@@ -80,7 +81,6 @@ end
 -- FileIO Subsystem:
 -- Saves and loads player levels
 -- ============================================================================
-
 function PlayerLeveling:LoadPlayerLevels()
     return sc_json.LoadTable(self.Settings.FilePath)
 end
@@ -90,8 +90,34 @@ function PlayerLeveling:SavePlayerLevels()
 end
 
 -- ============================================================================
--- Helper Functions
+-- Functions
 -- ============================================================================
+-- ============================================================================
+-- PlayerLeveling.InitPlayer:
+-- Initialise player to be added into the leveling System
+-- ============================================================================
+function PlayerLeveling:InitPlayer( Player )
+    -- Initialise local copy of global files
+    local Settings = self.Settings
+    local LocalBadgeRow = Settings.Levels.BadgeRow
+
+    -- Get Player Config Data
+    local Target = Player:GetClient()
+    local Existing, _ = Shine:GetUserData( Target )
+
+    if not Existing["Badges"] or Existing["Badge"] then
+        Existing["Badges"] = {}
+        Shine:SaveUsers( true )
+    end
+
+    if LocalBadgeRow and type(LocalBadgeRow) == "string"
+        and not Existing["Badges"][LocalBadgeRow] then
+            Existing["Badges"][LocalBadgeRow] = {}
+            Shine:SaveUsers( true )
+    end
+
+end
+
 -- ============================================================================
 -- PlayerLeveling:GetPlayerLevel:
 -- Returns the level of the player
@@ -99,7 +125,6 @@ end
 function PlayerLeveling:GetPlayerLevel( Player )
     return self.PlayerLevelingFile[tostring(Player:GetSteamId())].Level
 end
-
 
 -- ============================================================================
 -- PlayerLeveling:GetAllowedForLeveling:
@@ -142,22 +167,26 @@ end
 -- ============================================================================
 
 function PlayerLeveling:SwitchBadge( Existing, OldBadgeName, NewBadgeName )
-    if Existing["Badges"] then
-        for i, item in pairs(Existing["Badges"]) do
-            if type(item) == "table" then
-                for k, badge in ipairs(item) do
-                    if OldBadgeName == badge then
-                        table.remove(item, k)
-                        table.insert(item, 1, NewBadgeName)
-                        return true
-                    end
-                end
-            elseif OldBadgeName == i then
-                table.remove(Existing["Badges"], k)
-                table.insert(Existing["Badges"], 1, NewBadgeName)
-                return true
+    -- Initialise local copy of global files
+    local Settings = self.Settings
+    local LocalBadgeRow = Settings.Levels.BadgeRow
+
+    if LocalBadgeRow and Existing["Badges"][LocalBadgeRow] then
+        for k, badge in ipairs(Existing["Badges"][LocalBadgeRow]) do
+            if OldBadgeName == badge then
+                table.remove(Existing["Badges"][LocalBadgeRow], k)
             end
         end
+        table.insert(Existing["Badges"][LocalBadgeRow], 1, NewBadgeName)
+        return true
+    elseif Existing["Badges"] then
+        for i, item in pairs(Existing["Badges"]) do
+            if OldBadgeName == i then
+                table.remove(Existing["Badges"], i)
+            end
+        end
+        table.insert(Existing["Badges"], 1, NewBadgeName)
+        return true
     else
         Existing["Badge"] = NewBadgeName
         return true
@@ -240,7 +269,13 @@ function PlayerLeveling:UpdatePlayerLevel( Player ,
     local Existing, SteamID = Shine:GetUserData( Target )
     SteamID = tostring(SteamID)
 
-    local PreviousLevel = PlayerLevelingFile[SteamID].Level or 0
+    -- Initialise for player if no records are found
+    local PreviousLevel = 0
+    if PlayerLevelingFile[SteamID] then
+        PreviousLevel = PlayerLevelingFile[SteamID].Level
+    else
+         PlayerLevelingFile[SteamID] = {Level=0}
+    end
 
     -- Determine the player's correct level
     local CustomFormula = Settings.Formula.CustomFormula
@@ -249,11 +284,12 @@ function PlayerLeveling:UpdatePlayerLevel( Player ,
 
     -- If player's Level has changed, perform badge change
     if PreviousLevel ~= NewLevel then
-        if Settings.Levels.CustomLevelBadgesOrder then
-            if Settings.Levels.CustomLevelBadgesOrder[NewLevel] then
+        local CustomOrder = Settings.Levels.CustomLevelBadgesOrder
+        if CustomOrder and #CustomOrder > 0 then
+            if CustomOrder[NewLevel] then
                 self:SwitchBadge(Existing,
-                Settings.Levels.CustomLevelBadgesOrder[PreviousLevel],
-                Settings.Levels.CustomLevelBadgesOrder[NewLevel])
+                CustomOrder[PreviousLevel],
+                CustomOrder[NewLevel])
             else
                 error("ShineCredits sc_playerleveling.lua: Custom Level " ..
                     "Badges has no badges specified for level " .. NewLevel ..

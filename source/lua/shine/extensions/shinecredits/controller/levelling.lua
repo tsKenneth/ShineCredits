@@ -8,7 +8,7 @@
 --      by the formula in the config and also a corresponding badge to
 --      represent the level attained.
 --
--- The controller handles all the Shine Hooks and passes data into the levels
+-- The controller handles all the Shine Hooks and passes data into the self.Levels
 -- model for processing
 --
 -- ============================================================================
@@ -22,116 +22,31 @@
 local Shine = Shine
 local Levelling = {}
 
-local Levels = require("shine/extensions/shinecredits/model/levels")
-
-Levelling.Settings = {
-    Enabled = true,
-    ConfigDebug = true,
-    FileName = "ShineCredits_PlayerLevels.json",
-    AwardedWhen = {
-        Disconnected = true,
-        MapChange = true,
-        LeaveTeam = true,
-        GameEnds = true
-    },
-    Player = {
-        Enabled = true,
-        XPFormula = {
-            MaximumAwardedPerRound = 500,
-            Formula = {
-                Credits = false,
-                Time = {
-                    XPPerMinute = 1
-                },
-                Score = {
-                    XPPerScore = 0.1,
-                    XPPerKill = 1,
-                    XPPerAssist = 0.5
-                },
-                Multipliers = {
-                    Victory = 1.2
-                }
-            }
-        },
-        NextLevelFormula = {
-            MaximumLevel = 55,
-            Formula = "x^1"
-        },
-        Badges = {
-            Enabled = true,
-            BadgesOrder = {
-                LevelBadgeNamePrefix = "level",
-                LevelBadgeNameSuffix = "",
-                BadgeRow = 1,
-            },
-            CustomBadgesOrder = {}
-        }
-    },
-    Commander = {
-        Enabled = true,
-        XPFormula = {
-            MaximumAwardedPerRound = 5,
-            Formula = {
-                Credits = false,
-                Time = {
-                    XPPerMinute = 1
-                },
-                Multipliers = {
-                    Victory = 1.2
-                }
-            }
-        },
-        NextLevelFormula = {
-            MaximumLevel = 5,
-            Formula = "x^1"
-        },
-        Badges = {
-            Enabled = true,
-            BadgesOrder = {
-                LevelBadgeNamePrefix = "",
-                LevelBadgeNameSuffix = "",
-                BadgeRow = 2,
-            },
-            CustomBadgesOrder = {"bay_supporter","bay_silver",
-                "bay_red","bay_platinum","bay_gold"}
-        }
-    },
-    Permissions = {
-        SuspendLevelingForGroups = {}
-    },
-    Notifications = {
-        PlayerLevelChange = "Player level increased to level %s!" ..
-            " (badge will be refreshed when map changes)",
-        CommanderLevelChange = "Commander level increased to level %s!" ..
-            " (badge will be refreshed when map changes)",
-    }
-}
+Levelling.Settings = {}
 
 -- ============================================================================
 -- Levelling:Initialise
 -- Initialise the Leveling plguin by Shine
 -- ============================================================================
 
-function Levelling:Initialise(StorageConfig, LevellingConfig,
-    Notifications,
-    Badges)
+function Levelling:Initialise(LevellingConfig, Notifications, Badges,
+    Levels, Plugin)
     -- Load Config File
     self.Settings = LevellingConfig
-    self.Settings.FileName = StorageConfig.Files.Directory .. self.Settings.FileName
-    self.Notifications = Notifications
-    self.Badges = Badges
-
     -- Checks if Config debug mode is enabled. Returns false if failed checking
     -- Debug mode can be turned off to improve performance
     if self.Settings.Enabled then
         if self.Settings.ConfigDebug and not self:CheckConfig(self.Settings) then
+            self.Settings.Enabled = false
             return false
         else
-            Levels:Initialise(self.Settings)
+            self.Notifications = Notifications
+            self.Badges = Badges
+            self.Levels = Levels
+            self:CreateLevellingCommands(Plugin)
             return true
         end
     end
-    return false
 end
 
 -- ============================================================================
@@ -141,15 +56,6 @@ end
 
 function Levelling:CheckConfig(LevellingConfig)
     local CheckFlag = true
-
-    -- Check if Levelling.Filename is a string and a json file
-    if type(LevellingConfig.FileName) ~= "string" and
-        string.sub(LevellingConfig.FileName,-4) ~= ".json" then
-        error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
-            "FileName specified is not a string or is not a " ..
-            "json file.")
-        CheckFlag = false
-    end
 
     -- Checks if Player leveling configs are correct
     if LevellingConfig.Player.Enabled then
@@ -167,7 +73,7 @@ function Levelling:CheckConfig(LevellingConfig)
         LevellingConfig.Player.NextLevelFormula.MaximumLevel then
             error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
             "Player.Badges.CustomBadgesOrder must have more" ..
-            "elements (badges) than the number of levels")
+            "elements (badges) than the number of self.Levels")
             CheckFlag = false
         elseif LevellingConfig.Player.Badges.BadgesOrder.BadgeRow
         < 1 then
@@ -194,7 +100,7 @@ function Levelling:CheckConfig(LevellingConfig)
         LevellingConfig.Commander.NextLevelFormula.MaximumLevel then
             error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
             "Commander.Badges.CustomBadgesOrder must have more" ..
-            "elements (badges) than the number of levels")
+            "elements (badges) than the number of self.Levels")
             CheckFlag = false
         elseif LevellingConfig.Commander.Badges.BadgesOrder.BadgeRow
         < 1 then
@@ -240,7 +146,7 @@ function Levelling:SetGameState( Gamerules, NewState, OldState )
     -- If new state is 5:"Game Started"
     if NewState == 5 then
         self:StartXPAllInTeam()
-    else
+    elseif NewState >= 6 and NewState < 9 then
         self:StopXPAllInTeam(NewState)
     end
     return true
@@ -252,7 +158,7 @@ end
 -- ============================================================================
 function Levelling:ClientConnect( Client )
     if self.Settings.Enabled then
-        Levels:InitPlayer( Client:GetControllingPlayer() )
+        self.Levels:InitPlayer( Client:GetControllingPlayer() )
         return true
     else
         return false
@@ -290,24 +196,25 @@ function Levelling:StopXP( Player, Victory )
         return false
     end
 
-
     -- Calculate Player XP
     PlayerXPAwarded =
-    FormulaPlayer.Formula.Time.XPPerMinute * math.Round(Player:GetPlayTime()/60) +
-    FormulaPlayer.Formula.Score.XPPerScore * math.Round(Player:GetScore()/60) +
-    FormulaPlayer.Formula.Score.XPPerKill * math.Round(Player:GetKills()/60) +
-    FormulaPlayer.Formula.Score.XPPerAssist * math.Round(Player:GetAssistKills()/60)
+    math.Round(FormulaPlayer.Formula.Time.XPPerMinute *
+        math.Round(Player:GetPlayTime()/60,0),0) +
+    math.Round(FormulaPlayer.Formula.Score.XPPerScore * Player:GetScore(),0) +
+    math.Round(FormulaPlayer.Formula.Score.XPPerKill * Player:GetKills(),0) +
+    math.Round(FormulaPlayer.Formula.Score.XPPerAssist * Player:GetAssistKills(),0)
 
     -- Calculate Commander XP
     CommanderXPAwarded =
-    FormulaCommander.Formula.Time.XPPerMinute * math.Round(Player:GetCommanderTime()/60)
+    math.Round(FormulaCommander.Formula.Time.XPPerMinute *
+        math.Round(Player:GetCommanderTime()/60,0),0)
 
     -- Apply Multipliers
     if Victory then
-        PlayerXPAwarded = PlayerXPAwarded
-            * FormulaPlayer.Formula.Multipliers.Victory
-        CommanderXPAwarded = CommanderXPAwarded
-            * FormulaCommander.Formula.Multipliers.Victory
+        PlayerXPAwarded = math.Round(PlayerXPAwarded
+            * FormulaPlayer.Formula.Multipliers.Victory,0)
+        CommanderXPAwarded = math.Round(CommanderXPAwarded
+            * FormulaCommander.Formula.Multipliers.Victory,0)
     end
 
     -- Ensure that XP awarded does not go beyond maximum
@@ -317,14 +224,13 @@ function Levelling:StopXP( Player, Victory )
         FormulaPlayer.MaximumAwardedPerRound)
 
     -- Add the XP awarded
-    Shine:Print(PlayerXPAwarded)
-    Levels:AddPlayerXP( Player, PlayerXPAwarded )
-    Levels:AddCommanderXP( Player, CommanderXPAwarded)
+    self.Levels:AddPlayerXP( Player, PlayerXPAwarded )
+    self.Levels:AddCommanderXP( Player, CommanderXPAwarded)
 
-    self:UpdateLevel( Player, Levels:GetPlayerXP( Player ), false)
-    self:UpdateLevel( Player, Levels:GetCommanderXP( Player ), true)
+    self:UpdateLevel( Player, self.Levels:GetPlayerXP( Player ), false)
+    self:UpdateLevel( Player, self.Levels:GetCommanderXP( Player ), true)
 
-    Levels:SaveLevels()
+    self.Levels:SaveLevels()
 
     return true
 
@@ -386,36 +292,36 @@ function Levelling:UpdateLevel( Player, CurrentXP, Commander)
 
     -- Get the current level of the Player
     local PreviousLevel = 0
-    local CustomFormula = ""
     local NotificationText = ""
-    local MaxLevel = 0
+
     if Commander then
-        PreviousLevel = Levels:GetPlayerLevel( Player )
-        CustomFormula = Settings.Commander.NextLevelFormula.Formula
-        MaxLevel = Settings.Commander.NextLevelFormula.MaximumLevel
+        Settings = Settings.Commander
+        PreviousLevel = self.Levels:GetCommanderLevel( Player )
     else
-        PreviousLevel = Levels:GetPlayerLevel( Player )
-        CustomFormula = Settings.Player.NextLevelFormula.Formula
-        MaxLevel = Settings.Player.NextLevelFormula.MaximumLevel
+        Settings = Settings.Player
+        PreviousLevel = self.Levels:GetPlayerLevel( Player )
     end
 
     -- If player is already at max level
-    if PreviousLevel == Settings.Player.NextLevelFormula.MaximumLevel then
+    if PreviousLevel == Settings.NextLevelFormula.MaximumLevel then
         return nil
     end
 
     -- Determine the player's new level
     local NewLevel = self:GetCorrectLevel(
-        CustomFormula, CurrentXP, PreviousLevel, MaxLevel)
+        Settings.NextLevelFormula.Formula,
+        CurrentXP,
+        PreviousLevel,
+        Settings.NextLevelFormula.MaximumLevel)
 
     -- If player's Level has changed, perform badge change
     if PreviousLevel ~= NewLevel then
-        local CustomOrder = Settings.Levels.CustomLevelBadgesOrder
+        local CustomOrder = Settings.Badges.CustomBadgesOrder
         if CustomOrder and #CustomOrder > 0 then
             if CustomOrder[NewLevel] then
                 self.Badges:SwitchBadge(Player ,
                 CustomOrder[PreviousLevel],
-                CustomOrder[NewLevel])
+                CustomOrder[NewLevel], Settings.Badges.BadgeRow)
             else
                 error("ShineXP sc_playerleveling.lua: Custom Level " ..
                     "Badges has no badges specified for level " .. NewLevel ..
@@ -423,24 +329,25 @@ function Levelling:UpdateLevel( Player, CurrentXP, Commander)
                 return false
             end
         else
-            local NewBadge = Settings.Levels.LevelBadgeNamePrefix ..
+            local NewBadge = Settings.Badges.BadgesOrder.LevelBadgeNamePrefix ..
                 NewLevel ..
-                Settings.Levels.LevelBadgeNameSuffix
+                Settings.Badges.BadgesOrder.LevelBadgeNameSuffix
 
-            local OldBadge = Settings.Levels.LevelBadgeNamePrefix ..
+            local OldBadge = Settings.Badges.BadgesOrder.LevelBadgeNamePrefix ..
                 PreviousLevel ..
-                Settings.Levels.LevelBadgeNameSuffix
+                Settings.Badges.BadgesOrder.LevelBadgeNameSuffix
 
-            self.Badges:SwitchBadge(Player,OldBadge,NewBadge)
+            self.Badges:SwitchBadge(Player,OldBadge,
+                NewBadge,Settings.Badges.BadgeRow)
         end
 
         -- Commit changes to files
         if Commander then
-            Levels:SetCommanderLevel( Player, NewLevel)
-            NotificationText = Settings.Notifications.CommanderLevelChange
+            self.Levels:SetCommanderLevel( Player, NewLevel)
+            NotificationText = Settings.Notifications.LevelChange
         else
-            Levels:SetPlayerLevel( Player, NewLevel)
-            NotificationText = Settings.Notifications.PlayerLevelChange
+            self.Levels:SetPlayerLevel( Player, NewLevel)
+            NotificationText = Settings.Notifications.LevelChange
         end
 
         self.Notifications:Notify(Player,
@@ -503,7 +410,7 @@ function Levelling:GetCorrectLevel( CustomFormula, CurrentXP
 
     -- Check if the formula is a valid mathematical construct
     if not FormulaFunction() then
-        error("ShineCredits Levels:GetCorrectLevel - Formula provided is " ..
+        error("ShineCredits self.Levels:GetCorrectLevel - Formula provided is " ..
         "not valid.")
     end
 
@@ -532,4 +439,94 @@ function Levelling:GetCorrectLevel( CustomFormula, CurrentXP
     return CurrentLevel
 end
 
+-- ============================================================================
+-- ----------------------------------------------------------------------------
+-- Commands
+-- ----------------------------------------------------------------------------
+-- ============================================================================
+function Levelling:CreateLevellingCommands(Plugin)
+    local Settings = self.Settings
+    local CommandsFile = self.Settings.Commands
+    local Levels = self.Levels
+
+    -- ====== Set XP ======
+    local function SetXP( Client, Targets, AmountPlayer, AmountCommander)
+        local LocalPlayer = Client:GetControllingPlayer()
+        for i = 1, #Targets do
+            SteamID = tostring(Targets[ i ]:GetUserId())
+            Levels:SetPlayerXP( Client:GetControllingPlayer(),
+                AmountPlayer )
+            Levels:SetCommanderXP( Client:GetControllingPlayer(),
+                AmountCommander )
+        end
+        Levels:SaveLevels()
+
+        self.Notifications:Notify(LocalPlayer, "XP Set")
+        self.Notifications:ConsoleMessage( LocalPlayer, "XP Set" )
+    end
+	local SetXPCommand = Plugin:BindCommand( CommandsFile.SetXP.Console,
+        CommandsFile.SetXP.Chat, SetXP )
+    SetXPCommand:AddParam{ Type = "clients", Help = "Player(s)" }
+    SetXPCommand:AddParam{ Type = "number", Help = "PlayerXP:Integer" }
+    SetXPCommand:AddParam{ Type = "number", Help = "CommanderXP:Integer" }
+	SetXPCommand:Help( "Set Levels of the specified player(s)" )
+
+    -- ====== Add XP ======
+    local function AddXP( Client, Targets, AmountPlayer, AmountCommander )
+        local LocalPlayer = Client:GetControllingPlayer()
+        for i = 1, #Targets do
+            SteamID = tostring(Targets[ i ]:GetUserId())
+            Levels:AddPlayerXP( Client:GetControllingPlayer(),
+                AmountPlayer )
+            Levels:AddCommanderXP( Client:GetControllingPlayer(),
+                AmountCommander )
+
+        end
+        Levels:SaveLevels()
+
+        self.Notifications:Notify(LocalPlayer, "XP Added")
+        self.Notifications:ConsoleMessage( LocalPlayer, "XP Added" )
+    end
+	local AddXPCommand = Plugin:BindCommand( CommandsFile.AddXP.Console,
+        CommandsFile.AddXP.Chat, AddXP )
+    AddXPCommand:AddParam{ Type = "clients", Help = "Player(s)" }
+    AddXPCommand:AddParam{ Type = "number", Help = "PlayerXP:Integer" }
+    AddXPCommand:AddParam{ Type = "number", Help = "CommanderXP:Integer" }
+	AddXPCommand:Help( "Adds Levels to the specified player(s), " ..
+        "input a negative integer to subtract")
+
+    -- ====== View Levels ======
+    local function ViewXP( Client )
+        local LocalPlayer = Client:GetControllingPlayer()
+        local Summary = Levels:GetSummary( LocalPlayer )
+        local PlayerNextLevelFormula =
+            Settings.Player.NextLevelFormula.Formula
+        local CommanderNextLevelFormula =
+            Settings.Commander.NextLevelFormula.Formula
+
+        local PlayerNextLevelFunction =
+            loadstring(PlayerNextLevelFormula:gsub("x", Summary.PlayerLevel+1))
+        local CommanderNextLevelFunction =
+            loadstring(CommanderNextLevelFormula:gsub("x", Summary.CommanderLevel+1))
+
+        local ViewString = "Levels Info for " ..
+            Shine.GetClientInfo( Client ) .. "\n" ..
+            "Current XP (Player/Commander): " ..
+            Summary.PlayerXP ..
+            "/" .. Summary.CommanderXP .. "\n" ..
+            "Current Level (Player/Commander): " ..
+            Summary.PlayerLevel ..
+            "/" .. Summary.CommanderLevel .. "\n" ..
+            "XP to next level (Player/Commander)" ..
+            PlayerNextLevelFunction() ..
+            "/" .. CommanderNextLevelFunction()
+
+        self.Notifications:Notify(LocalPlayer, ViewString)
+        self.Notifications:ConsoleMessage( LocalPlayer, ViewString )
+    end
+
+    local ViewXPCommand = Plugin:BindCommand( CommandsFile.ViewXP.Console,
+        CommandsFile.ViewXP.Chat, ViewXP )
+    ViewXPCommand:Help( "Show your Levels information" )
+end
 return Levelling

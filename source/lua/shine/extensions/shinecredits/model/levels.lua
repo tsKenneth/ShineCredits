@@ -18,26 +18,29 @@
 -- ----------------------------------------------------------------------------
 -- ============================================================================
 
-local Shine = Shine
 local Levels = { _version = "0.1.0" }
 local Json = require("shine/extensions/shinecredits/utility/json")
 
 Levels.Settings = {}
 Levels.LevelsFile = {}
+Levels.Enabled = false
 
 -- ============================================================================
 -- Level.Initialise:
 -- Initialise the Leveling subsystem
 -- ============================================================================
-function Levels:Initialise(LevelingSettings, Badges)
+function Levels:Initialise(StorageConfig, LevelingSettings)
     if LevelingSettings then
         self.Settings = LevelingSettings
+        self.Settings.FileName = StorageConfig.Files.Directory ..
+            self.Settings.FileName
+
         self.LevelsFile = self:LoadLevels()
+        self.Enabled = true
         return true
     else
         error("[ShineXP] levels:Initialise() - An error has occurred during "
             .. "initialisation, levels will not be enabled")
-        self.Settings.Enabled = false
         return false
     end
 end
@@ -48,9 +51,6 @@ end
 -- ============================================================================
 function Levels:InitPlayer( Player )
     -- Initialise local copy of global files
-    local Settings = self.Settings
-    local LocalBadgeRowPlayer = Settings.Player.Badges.BadgesOrder.BadgeRow
-    local LocalBadgeRowCommander = Settings.Player.Badges.BadgesOrder.BadgeRow
     local LocalLevelsFile = self.LevelsFile
     local SteamID = tostring(Player:GetSteamId())
 
@@ -60,21 +60,6 @@ function Levels:InitPlayer( Player )
             Commander = {XP = 0, Level = 0}
             }
         self:SaveLevels()
-    end
-
-    -- Get Player Config Data
-    local Target = Player:GetClient()
-    local Existing, _ = Shine:GetUserData( Target )
-
-    if not Existing["Badges"] or Existing["Badge"] then
-        Existing["Badges"] = {}
-        if Existing["Badges"][tostring(LocalBadgeRowPlayer)] == nil then
-            Existing["Badges"][tostring(LocalBadgeRowPlayer)] = {}
-        end
-        if Existing["Badges"][tostring(LocalBadgeRowCommander)] == nil then
-            Existing["Badges"][tostring(LocalBadgeRowCommander)] = {}
-        end
-        Shine:SaveUsers( true )
     end
 end
 
@@ -95,36 +80,22 @@ end
 -- Accessors and Mutators
 -- ----------------------------------------------------------------------------
 -- ============================================================================
-
 -- ============================================================================
--- Levels:AddPlayerXP
--- Adds a specified amount of XP to the player
--- Negative number for subtract
+-- Levels:GetSummary
+-- Returns the XP of the player
 -- ============================================================================
-function Levels:AddPlayerXP( Player, AmountArg )
-    local LocalLevelsFiles = self.LevelsFile
-    local SteamID = tostring(Player:GetSteamId())
-    local Amount = AmountArg or 0
+function Levels:GetSummary( PlayerArg )
+    local SteamID = tostring(PlayerArg:GetSteamId())
+    local Results = {
+        PlayerXP = self.LevelsFile[SteamID].Player.XP,
+        CommanderXP = self.LevelsFile[SteamID].Commander.XP,
+        PlayerLevel = self.LevelsFile[SteamID].Player.Level,
+        CommanderLevel = self.LevelsFile[SteamID].Commander.Level
+    }
 
-    LocalLevelsFiles[SteamID].Player.XP
-        = LocalLevelsFiles[SteamID].Player.XP + Amount
-    return true
+    return Results
 end
 
--- ============================================================================
--- Levels:AddCommanderXP
--- Adds a specified amount of XP to the Commander
--- Negative number for subtract
--- ============================================================================
-function Levels:AddCommanderXP( Player, AmountArg )
-    local LocalLevelsFiles = self.LevelsFile
-    local SteamID = tostring(Player:GetSteamId())
-    local Amount = AmountArg or 0
-
-    LocalLevelsFiles[SteamID].Commander.XP
-        = LocalLevelsFiles[SteamID].Commander.XP + Amount
-    return true
-end
 
 -- ============================================================================
 -- Levels:GetPlayerXP
@@ -160,6 +131,62 @@ end
 function Levels:GetCommanderLevel( CommanderArg )
     local SteamID = tostring(CommanderArg:GetSteamId())
     return self.LevelsFile[SteamID].Commander.Level
+end
+
+-- ============================================================================
+-- Levels:AddPlayerXP
+-- Adds a specified amount of XP to the player
+-- Negative number for subtract
+-- ============================================================================
+function Levels:AddPlayerXP( Player, AmountArg )
+    local LocalLevelsFiles = self.LevelsFile
+    local SteamID = tostring(Player:GetSteamId())
+    local Amount = AmountArg or 0
+
+    LocalLevelsFiles[SteamID].Player.XP
+        = LocalLevelsFiles[SteamID].Player.XP + Amount
+    return true
+end
+
+-- ============================================================================
+-- Levels:AddCommanderXP
+-- Adds a specified amount of XP to the Commander
+-- Negative number for subtract
+-- ============================================================================
+function Levels:AddCommanderXP( Player, AmountArg )
+    local LocalLevelsFiles = self.LevelsFile
+    local SteamID = tostring(Player:GetSteamId())
+    local Amount = AmountArg or 0
+
+    LocalLevelsFiles[SteamID].Commander.XP
+        = LocalLevelsFiles[SteamID].Commander.XP + Amount
+    return true
+end
+
+-- ============================================================================
+-- Levels:SetPlayerXP
+-- Set the player's XP to the specified amount
+-- ============================================================================
+function Levels:SetPlayerXP( Player, AmountArg )
+    local LocalLevelsFiles = self.LevelsFile
+    local SteamID = tostring(Player:GetSteamId())
+    local Amount = AmountArg or 0
+
+    LocalLevelsFiles[SteamID].Player.XP = Amount
+    return true
+end
+
+-- ============================================================================
+-- Levels:SetCommanderXP
+-- Set the commander's XP to the specified amount
+-- ============================================================================
+function Levels:SetCommanderXP( Player, AmountArg )
+    local LocalLevelsFiles = self.LevelsFile
+    local SteamID = tostring(Player:GetSteamId())
+    local Amount = AmountArg or 0
+
+    LocalLevelsFiles[SteamID].Commander.XP = Amount
+    return true
 end
 
 -- ============================================================================

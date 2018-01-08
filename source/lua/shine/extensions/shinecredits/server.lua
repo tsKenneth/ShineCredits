@@ -2,7 +2,7 @@
 --
 -- Shine Credits System
 --
--- Copyright (c) 2018 Kenneth
+-- Copyright (c) 2015 Kenneth
 --
 -- This NS2 Mod is free; you can redistribute it and/or modify it
 -- under the terms of the MIT license. See LICENSE for details.
@@ -23,13 +23,14 @@ local Notifications = require("shine/extensions/shinecredits/utility/notificatio
 local Credits = require("shine/extensions/shinecredits/model/credits")
 local Badges = require("shine/extensions/shinecredits/model/badges")
 local Levels = require("shine/extensions/shinecredits/model/levels")
+local BadgesMenu = require("shine/extensions/shinecredits/model/badgesmenu")
 
 -- Controllers
 local CreditsAwarding = require("shine/extensions/shinecredits/controller/creditsawarding")
 local Levelling = require("shine/extensions/shinecredits/controller/levelling")
+local BadgeRedemptions = require("shine/extensions/shinecredits/controller/badgeredemptions")
 
-
-ShineCredits.Version = "2.0"
+ShineCredits.Version = "2.2"
 ShineCredits.PrintName = "Shine Credits"
 
 ShineCredits.HasConfig = true
@@ -45,29 +46,71 @@ ShineCredits.DefaultConfig = {
             Host = nil,
             Method = nil,
             Password = nil
+        },
+        Models = {
+            Badges = {
+                Enabled = true,
+                FileName = "ShineCredits_PlayerBadges.json",
+                MaxBadgeRows = 8
+            },
+            Credits = {
+                Enabled = true,
+                FileName = "ShineCredits_PlayerCredits.json"
+            },
+            Levels = {
+                Enabled = true,
+                FileName = "ShineCredits_PlayerLevels.json"
+            }
+        },
+        RedemptionMenus = {
+            BadgesMenu = {
+                Enabled = true,
+                FileName = "ShineCredits_BadgesMenu.json"
+            }
+        },
+    },
+    Utility = {
+        Notifications = {
+            Enabled = true,
+            Message = {
+                Default = "",
+                MessageRGB = {255,255,255}
+            },
+            Sender = {
+                DefaultName = "[Shine Credits]",
+                NameRGB = {255,20,30}
+            }
         }
     },
-    BaseConfigs = {
+    Redemptions = {
         Badges = {
-            FileName = "ShineCredits_PlayerBadges.json",
-            MaxBadgeRows = 8
-        },
-        Credits = {
-            FileName = "ShineCredits_PlayerCredits.json"
-        },
-        Levels = {
-            FileName = "ShineCredits_PlayerLevels.json"
+            Enabled = true,
+            ConfigDebug = true,
+            BadgeRows = {3,4,5,6,7,8},
+            ReservedBadges = {"level1","level2","level3","level4","level5",
+                "level6","level7","level8","level9","level10","level11",
+                "level12","level13","level14","level15","level16","level17",
+                "level18","level19","level20","level21","level22","level23",
+                "level24","level25","level26","level27","level28","level29",
+                "level30","level31","level32","level33","level34","level35",
+                "level36","level37","level38","level39","level40","level41",
+                "level42","level43","level44","level45","level46","level47",
+                "level48","level49","level50","level51","level52","level53",
+                "level54","level55","bay_red","bay_silver","bay_supporter",
+                "bay_gold","bay_platinum"
+            },
+            ChatItemsPerPage = 10,
+            Commands = {
+                RedeemBadge = {Console = "sc_redeembadge", Chat="redeembadge"},
+                ViewBadges = {Console = "sc_viewbadge", Chat="viewbadge"},
+                AddBadge = {Console = "sc_addbadge", Chat="addbadge"},
+                RemoveBadge = {Console = "sc_removebadge", Chat="removebadge"}
+            }
         }
     },
     CreditsAwarding = {
         Enabled = true,
         ConfigDebug = true,
-        AwardedWhen = {
-            Disconnected = true,
-            MapChange = true,
-            LeaveTeam = true,
-            GameEnds = true
-        },
         Player = {
             Enabled = true,
             CreditsFormula = {
@@ -94,21 +137,15 @@ ShineCredits.DefaultConfig = {
             SuspendCreditsForGroups = {}
         },
         Commands = {
-            SetCredits = {Console  = "sh_setcredits", Chat = "setcredits"},
-            ViewCredits = {Console  = "sh_viewcredits", Chat = "viewcredits"},
-            AddCredits = {Console  = "sh_addcredits", Chat = "addcredit"}
+            SetCredits = {Console  = "sc_setcredits", Chat = "setcredits"},
+            ViewCredits = {Console  = "sc_viewcredits", Chat = "viewcredits"},
+            AddCredits = {Console  = "sc_addcredits", Chat = "addcredit"}
         }
     },
 
     Levelling = {
         Enabled = true,
         ConfigDebug = true,
-        AwardedWhen = {
-            Disconnected = true,
-            MapChange = true,
-            LeaveTeam = true,
-            GameEnds = true
-        },
         Player = {
             Enabled = true,
             XPFormula = {
@@ -183,9 +220,9 @@ ShineCredits.DefaultConfig = {
             SuspendLevelingForGroups = {}
         },
         Commands = {
-            SetXP = {Console  = "sh_setxp", Chat = "setxp"},
-            ViewXP = {Console  = "sh_viewxp", Chat = "viewxp"},
-            AddXP = {Console  = "sh_addxp", Chat = "addxp"}
+            SetXP = {Console  = "sc_setxp", Chat = "setxp"},
+            ViewXP = {Console  = "sc_viewxp", Chat = "viewxp"},
+            AddXP = {Console  = "sc_addxp", Chat = "addxp"}
         }
     }
 }
@@ -201,6 +238,9 @@ ShineCredits.CheckConfigTypes = true
 function ShineCredits:Initialise()
     self:LoadConfig()
 
+    -- Initialise Utilities
+    self:InitialiseUtility()
+
     -- Initialise Models
     self:InitialiseModels()
 
@@ -210,10 +250,15 @@ function ShineCredits:Initialise()
 	return true
 end
 
+function ShineCredits:InitialiseUtility()
+    Notifications:Initialise(self.Config.Utility.Notifications)
+end
+
 function ShineCredits:InitialiseModels()
-    Badges:Initialise(self.Config.Storage,self.Config.BaseConfigs.Badges)
-    Credits:Initialise(self.Config.Storage,self.Config.BaseConfigs.Credits)
-    Levels:Initialise(self.Config.Storage,self.Config.BaseConfigs.Levels)
+    Badges:Initialise(self.Config.Storage)
+    Credits:Initialise(self.Config.Storage)
+    Levels:Initialise(self.Config.Storage)
+    BadgesMenu:Initialise(self.Config.Storage)
 end
 
 function ShineCredits:InitialiseControllers()
@@ -222,6 +267,9 @@ function ShineCredits:InitialiseControllers()
 
     CreditsAwarding:Initialise(self.Config.CreditsAwarding,
     Notifications ,Credits, self)
+
+    BadgeRedemptions:Initialise(self.Config.Redemptions.Badges,
+    Notifications ,Badges, BadgesMenu, Credits, self)
 end
 
 
@@ -230,11 +278,31 @@ end
 -- Hooks
 -- ----------------------------------------------------------------------------
 -- ============================================================================
--- ======= Hooks to start credits =======
+
+-- ============================================================================
+-- ShineCredits:PostJoinTeam
 -- Called when a player joins a team in the midst of a game
-function ShineCredits:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
-    Levelling:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
-    CreditsAwarding:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
+-- Used to provide controllers access to Shine Hooks
+-- ============================================================================
+-- Called when a player connects
+function ShineCredits:ClientConnect( Client )
+    local LocalPlayer = Client:GetControllingPlayer()
+
+    Badges:InitPlayer(LocalPlayer)
+    Credits:InitPlayer(LocalPlayer)
+    Levels:InitPlayer(LocalPlayer)
+end
+
+
+--
+function ShineCredits:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force,
+     ShineForce )
+
+    Levelling:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force,
+     ShineForce )
+
+    CreditsAwarding:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force,
+     ShineForce )
 end
 
 -- Called when game starts or stops
@@ -244,20 +312,10 @@ function ShineCredits:SetGameState( Gamerules, NewState, OldState )
 
 end
 
--- Called when a player connects
-function ShineCredits:ClientConnect( Client )
-    self:InitPlayer(Client)
-end
-
--- ============================================================================
--- ----------------------------------------------------------------------------
--- Helper Functions
--- ----------------------------------------------------------------------------
--- ============================================================================
-function ShineCredits:InitPlayer(Client)
-    Badges:InitPlayer(Client:GetControllingPlayer())
-    Credits:InitPlayer(Client:GetControllingPlayer())
-    Levels:InitPlayer(Client:GetControllingPlayer())
+-- Called when the map changes
+function ShineCredits:MapChange()
+    Levelling:MapChange()
+    CreditsAwarding:MapChange()
 end
 
 Shine:RegisterExtension("shinecredits", ShineCredits)

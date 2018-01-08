@@ -3,6 +3,8 @@
 -- BadgeRedemptions (Controller)
 --      Allows managing and redemption of badges
 --
+-- Dependencies: Requires badges.lua, BadgesMenu.lua
+-- and credits.lua to be enabled
 -- ============================================================================
 
 -- ============================================================================
@@ -11,129 +13,136 @@
 -- ----------------------------------------------------------------------------
 -- ============================================================================
 
-local Shine = Shine
 local BadgeRedemptions = { _version = "0.1.0" }
 
-BadgeRedemptions.Settings =
-{
-    Badges = {
-        Enabled = true,
-        MenuFileName = "ShineCredits_BadgesMenu.json",
-        BadgeRows = {3,4,5,6,7,8},
-        ReservedBadges = {"level1","level2","level3","level4","level5","level6",
-            "level7","level8","level9","level10","level11","level12","level13","level14",
-            "level15","level16","level17","level18","level19","level20","level21","level22",
-            "level23","level24","level25","level26","level27","level28","level29","level30",
-            "level31","level32","level33","level34","level35","level36","level37","level38",
-            "level39","level40","level41","level42","level43","level44","level45","level46",
-            "level47","level48","level49","level50","level51","level52","level53","level54",
-            "level55","bay_red","bay_silver","bay_supporter","bay_gold","bay_platinum"
-        },
-        ChatItemsPerPage = 10,
-        Commands = {
-            AddBadgeToMenu = {Console = "sh_addbadge", Chat = "addbadge"},
-            RemoveBadgeFromMenu = {Console = "sh_removebadge", Chat = "removebadge"},
-            RedeemBadge = {Console = "sh_redeembadge", Chat = "redeembadge"}
-        }
-    }
-
-}
-
-BadgeRedemptions.MenuFile = {}
 BadgeRedemptions.RedemptionsFile = {}
 
 -- ============================================================================
 -- BadgeRedemptions:Initialise
 -- Initialise the Badges Redemption Menu
 -- ============================================================================
-function BadgeRedemptions:Initialise(StorageConfig, BadgeRedemptionsConfigs,
-    Notifications, Plugin)
-    if BadgeRedemptionsConfigs
-        and BadgeRedemptionsConfigs.Enabled then
-        self.Settings = BadgeRedemptionsConfigs
+function BadgeRedemptions:Initialise(BadgeRedemptionsConfig,
+    Notifications, Badges, BadgesMenu, Credits, Plugin)
+    -- Load Config File
+    self.Settings = BadgeRedemptionsConfig
 
-        self.MenuFilePath = StorageConfig.Files.Directory ..
-        BadgeRedemptionsConfigs.MenuFileName
-        self.RedemptionsFilePath = StorageConfig.Files.Directory ..
-        BadgeRedemptionsConfigs.RedemptionsFileName
+    -- Checks if Config debug mode is enabled. Returns false if failed checking
+    -- Debug mode can be turned off to improve performance
+    if self.Settings.Enabled then
+        self.Notifications = Notifications
+        self.Credits = Credits
+        self.Badges = Badges
+        self.BadgesMenu = BadgesMenu
 
-        self.MenuFile = self:LoadBadgesMenu()
-        self.RedemptionsFile = self:LoadBadgesRedemptions()
-
-        self:CreateBadgeMenuCommands(Plugin)
-        return true
+        if self.Settings.ConfigDebug and not self:CheckConfig(self.Settings) then
+            self.Settings.Enabled = false
+            return false
+        else
+            self:CreateMenuCommands(Plugin)
+            return true
+        end
     else
-        error("ShineCredits BadgeRedemptions:Initialise() - An error " ..
-            "has occurred during initialisation, badges menu and redemption " ..
-            "will not be enabled")
-        self.Settings.Enabled = false
         return false
     end
 end
--- ============================================================================
--- FileIO Subsystem:
--- Saves and loads badges menu
--- ============================================================================
-function BadgeRedemptions:LoadBadgesMenu()
-    return Json.LoadTable(self.MenuFile)
-end
 
-function BadgeRedemptions:SaveBadgesMenu()
-    return Json.SaveTable(self.RedemptionsFile,self.MenuFile)
+-- ============================================================================
+-- BadgeRedemptions:CheckConfig
+-- Checks the config for correctness
+-- ============================================================================
+
+function BadgeRedemptions:CheckConfig(CreditsAwardingConfig)
+    local CheckFlag = true
+
+    --- Check Dependencies
+    if self.Credits:GetIsEnabled() == false then
+        error("ShineCredits CreditsAwarding:CheckConfig() - Error in config, " ..
+            "Subsystem requires Credits model to be enabled.")
+        CheckFlag = false
+    end
+
+    if self.Badges:GetIsEnabled() == false then
+        error("ShineCredits CreditsAwarding:CheckConfig() - Error in config, " ..
+            "Subsystem requires Badges model to be enabled.")
+        CheckFlag = false
+    end
+
+    if self.BadgesMenu:GetIsEnabled() == false then
+        error("ShineCredits CreditsAwarding:CheckConfig() - Error in config, " ..
+            "Subsystem requires BadgesMenu model to be enabled.")
+        CheckFlag = false
+    end
+
+    return CheckFlag
 end
 
 -- ============================================================================
 -- Functions
 -- ============================================================================
 -- ============================================================================
--- BadgeRedemptions:InitPlayer
--- Initialise player to be added into the leveling System
+-- BadgeRedemptions:AddBadge
+-- Adds a new badge to the badges menu
 -- ============================================================================
-function BadgeRedemptions:InitPlayer( Player )
-    -- Initialise local copy of global files
+
+function BadgeRedemptions:AddBadge( BadgeNameArg, DescriptionArg, CostArg )
+    if self:CheckIfBadgeIsReserved(BadgeNameArg) then
+        return false
+    else
+        self.BadgesMenu:AddBadge(BadgeNameArg, DescriptionArg, CostArg)
+        return true
+    end
+end
+
+-- ============================================================================
+-- BadgeRedemptions:RemoveBadge
+-- Removes a badge from the badges menu
+-- ============================================================================
+
+function BadgeRedemptions:RemoveBadge( BadgeNameArg )
+    return self.BadgesMenu:RemoveBadge(BadgeNameArg)
+end
+
+-- ============================================================================
+-- BadgeRedemptions:CheckIfBadgeIsReserved
+-- Checks if the badge is reserved
+-- ============================================================================
+
+function BadgeRedemptions:CheckIfBadgeIsReserved( BadgeName )
     local Settings = self.Settings
 
-    Shine:SaveUsers( true )
-
+    if Settings.ReservedBadges then
+        for _, badge in ipairs(Settings.ReservedBadges) do
+            if badge == BadgeName then
+                return true
+            end
+        end
+    end
+    return false
 end
+
 -- ============================================================================
 -- BadgeRedemptions:RedeemBadge
 -- Insert the redeemed badge into the player's userconfig
 -- ============================================================================
 
-function BadgeRedemptions:RedeemBadge( Player, NewBadgeName )
-    local LocalBadgeRedemptions = self.BadgeRedemptionsFile
+function BadgeRedemptions:RedeemBadge( Player, NewBadge )
     local Settings = self.Settings
-    local SteamID = tostring(Player:GetSteamId())
-
-    -- Subtract credits by the cost, return false if insufficient credits
-    if not sc_playercredits:SubtractCredits(SteamID ,
-        LocalBadgeRedemptions[NewBadgeName].Cost) then
-            return false
+    -- Checks if player already owns the badge
+    if self.Badges:GetIfPlayerHasBadge( Player, NewBadge ) then
+        return false
     end
 
-    local Target = Player:GetClient()
-    local Existing, _ = Shine:GetUserData( Target )
+    -- Subtract credits by the cost, return false if insufficient credits
+    if Credits:SpendCredits(Player ,
+        self.BadgesMenu:GetInfo(NewBadge).Cost) then
 
-    if Existing["Badges"] then
-        -- If field has rows like in Badges+
-        for i, item in pairs(Existing["Badges"]) do
-            if type(item) == "table" then
-                for _,k in pairs(Settings.ReservedBadgeRows) do
-                    if i ~= k then
-                        table.insert(item, NewBadgeName)
-                    end
-                end
-            -- If field doesnt have rows
-            else
-                table.insert(Existing["Badges"], NewBadgeName)
-            end
+        for _,row in ipairs(Settings.BadgeRows) do
+            self.Badges:AddBadge(Player, NewBadgeName, row)
         end
+        self.Badges:SavePlayerBadges()
         return true
     else
-        -- If there is only 1 badge
-        Existing["Badge"] = NewBadgeName
-        return true
+        return false
     end
 end
 
@@ -143,36 +152,32 @@ end
 -- Navigate the Badges Menu System
 -- ============================================================================
 
-function BadgeRedemptions:CreateBadgeMenuCommands(Plugin)
+function BadgeRedemptions:CreateMenuCommands(Plugin)
     local Settings = self.Settings
     local Commands = Settings.Commands
-    local LocalBadgeRedemptions = self.BadgeRedemptionsFile
 
     -- ====== Redeem Badges ======
     local function RedeemBadge( Client , BadgeNameArg)
         local LocalPlayer = Client:GetControllingPlayer()
-        local Flag = true
         local ReturnMessage = ""
 
-        if LocalBadgeRedemptions[BadgeNameArg] then
+        if self.BadgesMenu:GetInfo( BadgeNameArg ) then
             if self:RedeemBadge(LocalPlayer,BadgeNameArg) then
-                ReturnMessage = "Badge " .. BadgeNameArg .. " succesfully redeemed!"
-                .. "(Will take effect after map changes)"
-                Shine:SaveUsers( true )
+                ReturnMessage = "Badge " .. BadgeNameArg ..
+                    " succesfully redeemed!" ..
+                    " (Will take effect after map changes)"
             else
-                ReturnMessage = "Insufficient credits to redeem badge "
-                    .. BadgeNameArg
-                Flag = false
+                ReturnMessage = "You already own the badge "..
+                    "or you have insufficient credits to redeem the badge ("
+                    .. BadgeNameArg ..")"
             end
 
         else
             ReturnMessage = "There are no badges with name " .. BadgeNameArg
-            Flag = false
         end
 
-        sc_notification:Notify(LocalPlayer, ReturnMessage)
-        sc_notification:ConsoleMessage(LocalPlayer, ReturnMessage)
-        return Flag
+        self.Notifications:Notify(LocalPlayer, ReturnMessage)
+        self.Notifications:ConsoleMessage(LocalPlayer, ReturnMessage)
     end
 
     local RedeemBadgeCommand = Plugin:BindCommand( Commands.RedeemBadge.Console,
@@ -185,23 +190,23 @@ function BadgeRedemptions:CreateBadgeMenuCommands(Plugin)
     local function ViewItemMenu( Client , Page)
         local LocalPlayer = Client:GetControllingPlayer()
         local ItemIndex = 1
+        local LocalBadgesMenu = self.BadgesMenu:GetAllInfo()
         local PageString = string.format("\n| %5s | %50s | %80s | %10s |\n",
             "Index","Name", "Description", "Cost")
 
-        if (Page-1)*10 > table.Count( LocalBadgeRedemptions ) then
-            sc_notification:ConsoleMessage(Client, "No items on this page!")
-        end
-
-        for Name, Badge in pairs( LocalBadgeRedemptions ) do
+        for Name, Badge in pairs( LocalBadgesMenu ) do
             PageString = PageString .. string.format("| %7s | %50s | %80s | %10s |\n",
                 ItemIndex, Name, Badge.Description, Badge.Cost)
             ItemIndex = ItemIndex + 1
         end
-        sc_notification:ConsoleMessage(LocalPlayer, PageString)
+
+        PageString = PageString .. "\n type !redeembadge <badgename> to redeem"
+
+        self.Notifications:ConsoleMessage(LocalPlayer, PageString)
     end
 
-    local ViewItemMenuCommand = Plugin:BindCommand( Commands.ViewBadgeRedemptions.Console,
-        Commands.ViewBadgeRedemptions.Chat, ViewItemMenu )
+    local ViewItemMenuCommand = Plugin:BindCommand( Commands.ViewBadges.Console,
+        Commands.ViewBadges.Chat, ViewItemMenu )
     ViewItemMenuCommand:AddParam{ Type = "number", Optional = true, Default = 1, Help = "Page Number:Integer" }
     ViewItemMenuCommand:Help( "View badges redeemable with credits." )
 
@@ -212,38 +217,25 @@ function BadgeRedemptions:CreateBadgeMenuCommands(Plugin)
 
         if CostArg == nil or CostArg < 0 then
             ReturnMessage = "Cost cannot be negative."
-            sc_notification:Notify(LocalPlayer, ReturnMessage)
-            sc_notification:ConsoleMessage(LocalPlayer, ReturnMessage)
+            self.Notifications:Notify(LocalPlayer, ReturnMessage)
+            self.Notifications:ConsoleMessage(LocalPlayer, ReturnMessage)
             return false
         end
 
-        if Settings.ReservedBadges then
-            for _, badge in ipairs(Settings.ReservedBadges) do
-                if badge == BadgeNameArg then
-                    ReturnMessage = "Badge "
-                        .. BadgeNameArg .. " is a reserved badge;" ..
-                        "Badge will not be added"
-                    sc_notification:Notify(LocalPlayer, ReturnMessage)
-                    sc_notification:ConsoleMessage(LocalPlayer, ReturnMessage)
-                    return false
-                end
-            end
+        if self:AddBadge(BadgeNameArg, DescriptionArg, CostArg) then
+            ReturnMessage = "Badge "
+                .. BadgeNameArg .. " had been added to menu."
+        else
+            ReturnMessage = "Badge " ..
+                BadgeNameArg .. " was not added;the badge might be reserved"
         end
 
-        LocalBadgeRedemptions[BadgeNameArg] = {
-            Description = DescriptionArg,
-            Cost = CostArg}
-
-        ReturnMessage = "Badge "
-            .. BadgeNameArg .. " had been added to menu."
-
-        sc_notification:Notify(LocalPlayer, ReturnMessage)
-        sc_notification:ConsoleMessage(LocalPlayer, ReturnMessage)
-        self:SaveBadgeRedemptions()
+        self.Notifications:Notify(LocalPlayer, ReturnMessage)
+        self.Notifications:ConsoleMessage(LocalPlayer, ReturnMessage)
     end
 
-	local AddBadgeCommand = Plugin:BindCommand( Commands.AddBadgeToMenu.Console,
-        Commands.AddBadgeToMenu.Chat, AddBadge )
+	local AddBadgeCommand = Plugin:BindCommand( Commands.AddBadge.Console,
+        Commands.AddBadge.Chat, AddBadge )
     AddBadgeCommand:AddParam{ Type = "string", Help = "Badge Name:String" }
     AddBadgeCommand:AddParam{ Type = "string", Help = "Description:String" }
     AddBadgeCommand:AddParam{ Type = "number", Help = "Cost:Integer" }
@@ -253,27 +245,21 @@ function BadgeRedemptions:CreateBadgeMenuCommands(Plugin)
     local function RemoveBadge(Client, BadgeNameArg)
         local LocalPlayer = Client:GetControllingPlayer()
         local ReturnMessage = ""
-        local Flag = false
 
-        if LocalBadgeRedemptions.BadgeNameArg then
-            LocalBadgeRedemptions.BadgeNameArg = nil
+        if self:RemoveBadge(BadgeNameArg) then
             ReturnMessage = "Badge "
                 .. BadgeNameArg .. " removed."
-            self:SaveBadgeRedemptions()
-            Flag = true
         else
             ReturnMessage = "Invalid badge "
                 .. BadgeNameArg .. " not found."
-            Flag = false
         end
 
-        sc_notification:Notify(Client:GetControllingPlayer(),ReturnMessage)
-        sc_notification:ConsoleMessage(LocalPlayer, ReturnMessage)
-        return Flag
+        self.Notifications:Notify(LocalPlayer,ReturnMessage)
+        self.Notifications:ConsoleMessage(LocalPlayer, ReturnMessage)
     end
 
-    local RemoveBadgeCommand = Plugin:BindCommand( Commands.RemoveBadgeFromMenu.Console,
-        Commands.RemoveBadgeFromMenu.Chat, RemoveBadge )
+    local RemoveBadgeCommand = Plugin:BindCommand( Commands.RemoveBadge.Console,
+        Commands.RemoveBadge.Chat, RemoveBadge )
     RemoveBadgeCommand:AddParam{ Type = "string", Help = "Badge Name:String" }
 	RemoveBadgeCommand:Help( "Removes an Badge from the menu with the badge name specified." )
 end

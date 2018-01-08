@@ -21,7 +21,6 @@ Notification.Settings =
         DefaultName = "[Shine Credits]",
         NameRGB = {255,20,30}
     }
-
 }
 
 function Notification:Initialise(NotificationSettings)

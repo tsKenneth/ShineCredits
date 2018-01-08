@@ -8,8 +8,7 @@
 --      by the formula in the config and also a corresponding badge to
 --      represent the level attained.
 --
--- The controller handles all the Shine Hooks and passes data into the self.Levels
--- model for processing
+-- Requires Levels.lua and Badges.lua to be enabled
 --
 -- ============================================================================
 
@@ -36,16 +35,19 @@ function Levelling:Initialise(LevellingConfig, Notifications, Badges,
     -- Checks if Config debug mode is enabled. Returns false if failed checking
     -- Debug mode can be turned off to improve performance
     if self.Settings.Enabled then
+        self.Notifications = Notifications
+        self.Badges = Badges
+        self.Levels = Levels
+
         if self.Settings.ConfigDebug and not self:CheckConfig(self.Settings) then
             self.Settings.Enabled = false
             return false
         else
-            self.Notifications = Notifications
-            self.Badges = Badges
-            self.Levels = Levels
             self:CreateLevellingCommands(Plugin)
             return true
         end
+    else
+        return false
     end
 end
 
@@ -56,6 +58,19 @@ end
 
 function Levelling:CheckConfig(LevellingConfig)
     local CheckFlag = true
+
+    -- Check Dependencies
+    if self.Badges:GetIsEnabled() == false then
+        error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+            "Subsystem requires Badges model to be enabled.")
+        CheckFlag = false
+    end
+
+    if self.Levels:GetIsEnabled() == false then
+        error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+            "Subsystem requires Levels model to be enabled.")
+        CheckFlag = false
+    end
 
     -- Checks if Player leveling configs are correct
     if LevellingConfig.Player.Enabled then
@@ -124,18 +139,16 @@ end
 -- Starts or stops XP accrueing upon joining or leaving a
 -- playing team respectively
 -- ============================================================================
-function Levelling:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
-    local AwardSettings = self.Settings.AwardedWhen
-    if Gamerules:GetGameStarted() then
-        -- Check if team changed to is 0: Ready room , 3:Spectators
-        if (NewTeam == 0 or NewTeam == 3) and AwardSettings.LeaveTeam then
-            self:StopXP(Player)
-        else
-            self:StartXP(Player)
-        end
+function Levelling:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force,
+    ShineForce )
+    -- Check if team changed to is 1:Marine Team, 2:Alien Team
+    if Gamerules:GetGameStarted() and (NewTeam == 1 or NewTeam == 2) then
+        self:StartXP(Player)
         return true
+    else
+        return false
     end
-    return false
+
 end
 
 -- ============================================================================
@@ -166,6 +179,17 @@ function Levelling:ClientConnect( Client )
 end
 
 -- ============================================================================
+-- Levelling:MapChange
+-- Stops XP when map is changing in the middle of the game
+-- ============================================================================
+function Levelling:MapChange()
+    if Gamerules:GetGameStarted() then
+        -- Induce a draw scenario
+        self:StopXPAllInTeam(8)
+    end
+end
+
+-- ============================================================================
 -- ----------------------------------------------------------------------------
 -- Core Functions
 -- ----------------------------------------------------------------------------
@@ -190,6 +214,7 @@ function Levelling:StopXP( Player, Victory )
     local PlayerXPAwarded = 0
     local CommanderXPAwarded = 0
 
+    -- Validation checks
     -- Return false if player is not in a group allowed for leveling or
     --      in a group suspended from leveling
     if not self:GetAllowedForLeveling( Player ) then
@@ -322,6 +347,7 @@ function Levelling:UpdateLevel( Player, CurrentXP, Commander)
                 self.Badges:SwitchBadge(Player ,
                 CustomOrder[PreviousLevel],
                 CustomOrder[NewLevel], Settings.Badges.BadgeRow)
+                self.Badges:SavePlayerBadges()
             else
                 error("ShineXP sc_playerleveling.lua: Custom Level " ..
                     "Badges has no badges specified for level " .. NewLevel ..
@@ -339,6 +365,7 @@ function Levelling:UpdateLevel( Player, CurrentXP, Commander)
 
             self.Badges:SwitchBadge(Player,OldBadge,
                 NewBadge,Settings.Badges.BadgeRow)
+            self.Badges:SavePlayerBadges()
         end
 
         -- Commit changes to files
@@ -352,8 +379,6 @@ function Levelling:UpdateLevel( Player, CurrentXP, Commander)
 
         self.Notifications:Notify(Player,
             string.format(NotificationText,NewLevel))
-
-        Shine:SaveUsers( true )
 
         return NewLevel
     else
@@ -500,15 +525,18 @@ function Levelling:CreateLevellingCommands(Plugin)
         local LocalPlayer = Client:GetControllingPlayer()
         local Summary = Levels:GetSummary( LocalPlayer )
         local PlayerNextLevelFormula =
-            Settings.Player.NextLevelFormula.Formula
+            "return " .. Settings.Player.NextLevelFormula.Formula:gsub(
+            "x", Summary.PlayerLevel + 1)
         local CommanderNextLevelFormula =
-            Settings.Commander.NextLevelFormula.Formula
+            "return " .. Settings.Commander.NextLevelFormula.Formula:gsub(
+            "x", Summary.CommanderLevel + 1)
 
         local PlayerNextLevelFunction =
-            loadstring(PlayerNextLevelFormula:gsub("x", Summary.PlayerLevel+1))
+            loadstring(PlayerNextLevelFormula )
         local CommanderNextLevelFunction =
-            loadstring(CommanderNextLevelFormula:gsub("x", Summary.CommanderLevel+1))
+            loadstring(CommanderNextLevelFormula)
 
+        Shine:Print(type(PlayerNextLevelFunction))
         local ViewString = "Levels Info for " ..
             Shine.GetClientInfo( Client ) .. "\n" ..
             "Current XP (Player/Commander): " ..

@@ -14,7 +14,6 @@ local Badges = { _version = "0.1.0" }
 
 local Json = require("shine/extensions/shinecredits/utility/json")
 
-Badges.Enabled = false
 Badges.BadgesFile = {}
 
 -- ============================================================================
@@ -23,19 +22,17 @@ Badges.BadgesFile = {}
 -- ----------------------------------------------------------------------------
 -- ============================================================================
 
-function Badges:Initialise(StorageConfig, BadgesSettings)
-    if BadgesSettings then
-        self.Settings = BadgesSettings
-        self.Settings.FileName = StorageConfig.Files.Directory ..
+function Badges:Initialise(StorageConfig)
+    self.Settings = StorageConfig.Models.Badges
+    
+    if self.Settings and self.Settings.Enabled then
+        self.Settings.FilePath = StorageConfig.Files.Directory ..
             self.Settings.FileName
 
         self.BadgesFile = self:LoadPlayerBadges()
-        self.Enabled = true
 
         return true
     else
-        error("[ShineCredits] Badges:Initialise() - An error has occurred during "
-            .. "initialisation, badges will not be enabled")
         return false
     end
 end
@@ -96,11 +93,45 @@ end
 -- ============================================================================
 
 function Badges:LoadPlayerBadges()
-    return Json:LoadTable(self.Settings.FileName)
+    return Json:LoadTable(self.Settings.FilePath)
 end
 
 function Badges:SavePlayerBadges()
-    return Json:SaveTable(self.BadgesFile,self.Settings.FileName)
+    Shine:SaveUsers( true )
+    return Json:SaveTable(self.BadgesFile,self.Settings.FilePath)
+end
+
+-- ============================================================================
+-- ----------------------------------------------------------------------------
+-- Accessors and Mutators
+-- ----------------------------------------------------------------------------
+-- ============================================================================
+-- ============================================================================
+-- Badges:GetIsEnabled
+-- Returns if the model is enabled
+-- ============================================================================
+function Badges:GetIsEnabled()
+    return self.Settings.Enabled
+end
+
+-- ============================================================================
+-- Badges:GetIfPlayerHasBadge
+-- Returns if the player has the specified badge
+-- ============================================================================
+function Badges:GetIfPlayerHasBadge( Player, BadgeName )
+    local LocalBadgesFile = self.BadgesFile
+    local SteamID = tostring(Player:GetSteamId())
+
+    if LocalBadgesFile then
+        for k, row in pairs(LocalBadgesFile[SteamID]) do
+            for i, badge in pairs(row) do
+                if BadgeName == badge then
+                    return true
+                end
+            end
+            return false
+        end
+    end
 end
 
 -- ============================================================================
@@ -115,24 +146,30 @@ end
 -- ============================================================================
 function Badges:AddBadge( Player , NewBadge, BadgeRow )
     local Settings = self.Settings
+    local LocalBadgesFile = self.BadgesFile
     local Target = Player:GetClient()
-    local Existing, _ = Shine:GetUserData( Target )
+    local Existing, SteamID = Shine:GetUserData( Target )
+    SteamID = tostring(SteamID)
 
     if Existing["Badges"] then
-        if BadgeRow then
+        if BadgeRow and BadgeRow <= Settings.MaxBadgeRows then
             if Existing["Badges"][tostring(BadgeRow)] then
                 table.insert(Existing["Badges"][tostring(BadgeRow)],NewBadge)
+                table.insert(LocalBadgesFile[SteamID][tostring(BadgeRow)],
+                    NewBadge)
                 return true
             else
                 error("ShineCredits Badges:AddBadge() - Error, " ..
                     "attempting to insert a badge into a badgerow that " ..
-                    "doesn't exist.")
+                    "doesn't exist or beyond the max number of badgerows.")
                 return false
             end
         else
             for k, row in pairs(Existing["Badges"]) do
                 if tonumber(k) <= Settings.MaxBadgeRows then
                     table.insert(row,NewBadge)
+                    table.insert(LocalBadgesFile[SteamID][tostring(k)],
+                        NewBadge)
                     return true
                 else
                     error("ShineCredits Badges:AddBadge() - Error, " ..
@@ -154,15 +191,19 @@ end
 -- Removes the specified badge from the player. only removes the first instance
 -- ============================================================================
 function Badges:RemoveBadge( Player , OldBadge, BadgeRow)
+    local Settings = self.Settings
+    local LocalBadgesFile = self.BadgesFile
     local Target = Player:GetClient()
-    local Existing, _ = Shine:GetUserData( Target )
+    local Existing, SteamID = Shine:GetUserData( Target )
+    SteamID = tostring(SteamID)
 
     if Existing["Badges"] then
-        if BadgeRow then
+        if BadgeRow and BadgeRow <= Settings.MaxBadgeRows then
             local LocalBadgeRow = Existing["Badges"][tostring(BadgeRow)]
             for k, badge in pairs(LocalBadgeRow) do
-                if OldBadgeName == badge then
+                if OldBadge == badge then
                     table.remove(LocalBadgeRow, k)
+                    table.remove(LocalBadgesFile[SteamID][tostring(BadgeRow)],k)
                     return true
                 end
             end
@@ -172,10 +213,12 @@ function Badges:RemoveBadge( Player , OldBadge, BadgeRow)
                 for i, badge in pairs(row) do
                     if OldBadge == badge then
                         table.remove(row, i)
+                        table.remove(LocalBadgesFile[SteamID][tostring(k)],i)
                         return true
                     end
                 end
             end
+            return true
         end
     else
         error("ShineCredits Badges:RemoveBadge() - Error, " ..
@@ -196,7 +239,6 @@ function Badges:SwitchBadge( Player, OldBadge, NewBadge, BadgeRow )
     SuccessFlagRemove = self:RemoveBadge(Player, OldBadge, BadgeRow)
     SuccessFlagAdd = self:AddBadge(Player, NewBadge, BadgeRow)
 
-    Shine:SaveUsers( true )
     return SuccessFlagRemove and SuccessFlagAdd
 
 end

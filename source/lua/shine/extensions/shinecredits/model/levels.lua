@@ -8,8 +8,6 @@
 --      by the formula in the config and also a corresponding badge to
 --      represent the level attained.
 --
--- This model obtains data from the levelling.lua controller and processes it
---
 -- ============================================================================
 
 -- ============================================================================
@@ -23,24 +21,22 @@ local Json = require("shine/extensions/shinecredits/utility/json")
 
 Levels.Settings = {}
 Levels.LevelsFile = {}
-Levels.Enabled = false
 
 -- ============================================================================
 -- Level.Initialise:
 -- Initialise the Leveling subsystem
 -- ============================================================================
 function Levels:Initialise(StorageConfig, LevelingSettings)
-    if LevelingSettings then
-        self.Settings = LevelingSettings
-        self.Settings.FileName = StorageConfig.Files.Directory ..
+    self.Settings = StorageConfig.Models.Levels
+
+    if self.Settings and self.Settings.Enabled then
+        self.Settings.FilePath = StorageConfig.Files.Directory ..
             self.Settings.FileName
 
         self.LevelsFile = self:LoadLevels()
-        self.Enabled = true
+
         return true
     else
-        error("[ShineXP] levels:Initialise() - An error has occurred during "
-            .. "initialisation, levels will not be enabled")
         return false
     end
 end
@@ -68,11 +64,11 @@ end
 -- Saves and loads player and commander levels
 -- ============================================================================
 function Levels:LoadLevels()
-    return Json:LoadTable(self.Settings.FileName)
+    return Json:LoadTable(self.Settings.FilePath)
 end
 
 function Levels:SaveLevels()
-    return Json:SaveTable(self.LevelsFile,self.Settings.FileName)
+    return Json:SaveTable(self.LevelsFile,self.Settings.FilePath)
 end
 
 -- ============================================================================
@@ -80,6 +76,14 @@ end
 -- Accessors and Mutators
 -- ----------------------------------------------------------------------------
 -- ============================================================================
+-- ============================================================================
+-- Levels:GetIsEnabled
+-- Returns if the model is enabled
+-- ============================================================================
+function Levels:GetIsEnabled()
+    return self.Settings.Enabled
+end
+
 -- ============================================================================
 -- Levels:GetSummary
 -- Returns the XP of the player

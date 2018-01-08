@@ -5,9 +5,6 @@
 --      can then be used to redeem various comestic items, such as sprays and
 --      skins.
 --
--- This model obtains data from the creditsawarding.lua controller
--- and processes it
---
 -- ============================================================================
 
 -- ============================================================================
@@ -22,25 +19,21 @@ local Json = require("shine/extensions/shinecredits/utility/json")
 Credits.Settings = {}
 Credits.CreditsFile = {}
 
-Credits.Enabled = false
-
 -- ============================================================================
 -- Credits.Initialise
 -- Initialise the Credits subsystem
 -- ============================================================================
-function Credits:Initialise(StorageConfig, CreditsSettings)
-    if CreditsSettings then
-        self.Settings = CreditsSettings
-        self.Settings.FileName = StorageConfig.Files.Directory ..
+function Credits:Initialise(StorageConfig)
+    self.Settings = StorageConfig.Models.Credits
+
+    if self.Settings and self.Settings.Enabled then
+        self.Settings.FilePath = StorageConfig.Files.Directory ..
             self.Settings.FileName
 
         self.CreditsFile = self:LoadCredits()
-        self.Enabled = true
 
         return true
     else
-        error("[ShineCredits] Credits:Initialise() - An error has occurred during "
-            .. "initialisation, credits will not be enabled")
         return false
     end
 end
@@ -70,11 +63,11 @@ end
 -- Saves and loads player and commander Credits
 -- ============================================================================
 function Credits:LoadCredits()
-    return Json:LoadTable(self.Settings.FileName)
+    return Json:LoadTable(self.Settings.FilePath)
 end
 
 function Credits:SaveCredits()
-    return Json:SaveTable(self.CreditsFile,self.Settings.FileName)
+    return Json:SaveTable(self.CreditsFile,self.Settings.FilePath)
 end
 
 -- ============================================================================
@@ -82,6 +75,14 @@ end
 -- Accessors and Mutators
 -- ----------------------------------------------------------------------------
 -- ============================================================================
+-- ============================================================================
+-- Credits:GetIsEnabled
+-- Returns if the model is enabled
+-- ============================================================================
+function Credits:GetIsEnabled()
+    return self.Settings.Enabled
+end
+
 
 -- ============================================================================
 -- Credits:AddPlayerCredits
@@ -101,6 +102,25 @@ function Credits:AddPlayerCredits( PlayerArg, Current, Total)
         = LocalCredits[SteamID].Total + TotalAdd
 
     return true
+end
+
+-- ============================================================================
+-- Credits:SpendPlayerCredits
+-- Spends a specified amount of credits of the player. Returns false if
+-- player has insufficient credits
+-- ============================================================================
+function Credits:SpendPlayerCredits( PlayerArg, CostArg)
+    local LocalCredits = self.CreditsFile
+    local SteamID = tostring(PlayerArg:GetSteamId())
+    local Cost = CostArg or 0
+
+    if LocalCredits[SteamID].Current > Cost then
+        LocalCredits[SteamID].Current =
+            LocalCredits[SteamID].Current - Cost
+        return true
+    else
+        return false
+    end
 end
 
 

@@ -5,8 +5,7 @@
 --      can then be used to redeem various comestic items, such as sprays and
 --      skins.
 --
--- The controller handles all the required Shine Hooks and passes data into
--- the self.Credits model for processing
+-- Dependencies: Requires credits.lua to be enabled
 --
 -- ============================================================================
 
@@ -34,15 +33,17 @@ function CreditsAwarding:Initialise(CreditsAwardingConfig,
     -- Checks if Config debug mode is enabled. Returns false if failed checking
     -- Debug mode can be turned off to improve performance
     if self.Settings.Enabled then
+        self.Notifications = Notifications
+        self.Credits = Credits
         if self.Settings.ConfigDebug and not self:CheckConfig(self.Settings) then
             self.Settings.Enabled = false
             return false
         else
-            self.Notifications = Notifications
-            self.Credits = Credits
             self:CreateCreditsCommands(Plugin)
             return true
         end
+    else
+        return false
     end
 end
 
@@ -53,7 +54,13 @@ end
 
 function CreditsAwarding:CheckConfig(CreditsAwardingConfig)
     local CheckFlag = true
-    -- Placeholder
+
+    --- Check Dependencies
+    if self.Credits:GetIsEnabled() == false then
+        error("ShineCredits CreditsAwarding:CheckConfig() - Error in config, " ..
+            "Subsystem requires Credits model to be enabled.")
+        CheckFlag = false
+    end
 
     return CheckFlag
 end
@@ -70,17 +77,20 @@ end
 -- playing team respectively
 -- ============================================================================
 function CreditsAwarding:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force, ShineForce )
-    local AwardSettings = self.Settings.AwardedWhen
-    if Gamerules:GetGameStarted() then
-        -- Check if team changed to is 0: Ready room , 3:Spectators
-        if (NewTeam == 0 or NewTeam == 3) and AwardSettings.LeaveTeam then
-            self:StopCredits(Player)
-        else
-            self:StartCredits(Player)
-        end
-        return true
+    -- Check if controller is enabled
+    if self.Settings.Enabled == false then
+        return false
     end
-    return false
+
+
+    if Gamerules:GetGameStarted() and (NewTeam == 1 or NewTeam == 2) then
+        -- Check if team changed to is 1:Marine Team, 2:Alien Team
+        self:StartCredits(Player)
+        return true
+    else
+        return false
+    end
+
 end
 
 -- ============================================================================
@@ -88,6 +98,11 @@ end
 -- Starts or stops self.Credits accrueing when game changes state
 -- ============================================================================
 function CreditsAwarding:SetGameState( Gamerules, NewState, OldState )
+    -- Check if controller is enabled
+    if self.Settings.Enabled == false then
+        return false
+    end
+
     -- If new state is 5:"Game Started"
     if NewState == 5 then
         self:StartCreditsAllInTeam()
@@ -102,11 +117,26 @@ end
 -- Introduce player into the system
 -- ============================================================================
 function CreditsAwarding:ClientConnect( Client )
-    if self.Settings.Enabled then
-        self.Credits:InitPlayer( Client:GetControllingPlayer() )
-        return true
-    else
+    -- Check if controller is enabled
+    if self.Settings.Enabled == false then
         return false
+    end
+
+    self.Credits:InitPlayer( Client:GetControllingPlayer() )
+end
+
+-- ============================================================================
+-- CreditsAwarding:MapChange
+-- Stops credits when map is changing in the middle of the game
+-- ============================================================================
+function CreditsAwarding:MapChange()
+    if self.Settings.Enabled == false then
+        return false
+    end
+
+    if Gamerules:GetGameStarted() then
+        -- Induce a draw scenario
+        self:StopCreditsAllInTeam(8)
     end
 end
 

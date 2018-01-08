@@ -2,7 +2,7 @@
 --
 -- Shine Credits System
 --
--- Copyright (c) 2015 Kenneth
+-- Copyright (c) 2018 Kenneth
 --
 -- This NS2 Mod is free; you can redistribute it and/or modify it
 -- under the terms of the MIT license. See LICENSE for details.

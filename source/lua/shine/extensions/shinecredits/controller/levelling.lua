@@ -487,7 +487,6 @@ function Levelling:CreateLevellingCommands(Plugin)
         Levels:SaveLevels()
 
         self.Notifications:Notify(LocalPlayer, "XP Set")
-        self.Notifications:ConsoleMessage( LocalPlayer, "XP Set" )
     end
 	local SetXPCommand = Plugin:BindCommand( CommandsFile.SetXP.Console,
         CommandsFile.SetXP.Chat, SetXP )
@@ -510,7 +509,6 @@ function Levelling:CreateLevellingCommands(Plugin)
         Levels:SaveLevels()
 
         self.Notifications:Notify(LocalPlayer, "XP Added")
-        self.Notifications:ConsoleMessage( LocalPlayer, "XP Added" )
     end
 	local AddXPCommand = Plugin:BindCommand( CommandsFile.AddXP.Console,
         CommandsFile.AddXP.Chat, AddXP )
@@ -536,21 +534,21 @@ function Levelling:CreateLevellingCommands(Plugin)
         local CommanderNextLevelFunction =
             loadstring(CommanderNextLevelFormula)
 
-        Shine:Print(type(PlayerNextLevelFunction))
-        local ViewString = "Levels Info for " ..
-            Shine.GetClientInfo( Client ) .. "\n" ..
-            "Current XP (Player/Commander): " ..
-            Summary.PlayerXP ..
-            "/" .. Summary.CommanderXP .. "\n" ..
-            "Current Level (Player/Commander): " ..
-            Summary.PlayerLevel ..
-            "/" .. Summary.CommanderLevel .. "\n" ..
-            "XP to next level (Player/Commander)" ..
-            PlayerNextLevelFunction() ..
-            "/" .. CommanderNextLevelFunction()
+        self.Notifications:Notify(LocalPlayer, "Levels Info for " ..
+            Shine.GetClientInfo( Client ))
 
-        self.Notifications:Notify(LocalPlayer, ViewString)
-        self.Notifications:ConsoleMessage( LocalPlayer, ViewString )
+        self.Notifications:Notify(LocalPlayer,"Current XP (Player/Commander): " ..
+            Summary.PlayerXP .. "/" .. Summary.CommanderXP
+            ,false)
+
+        self.Notifications:Notify(LocalPlayer,"Current Level (Player/Commander): " ..
+            Summary.PlayerLevel .. "/" .. Summary.CommanderLevel
+            ,false)
+
+        self.Notifications:Notify(LocalPlayer,"XP to next level (Player/Commander)" ..
+        PlayerNextLevelFunction() - Summary.PlayerXP ..
+        "/" .. CommanderNextLevelFunction() - Summary.CommanderXP,
+        false)
     end
 
     local ViewXPCommand = Plugin:BindCommand( CommandsFile.ViewXP.Console,

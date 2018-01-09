@@ -30,7 +30,7 @@ local CreditsAwarding = require("shine/extensions/shinecredits/controller/credit
 local Levelling = require("shine/extensions/shinecredits/controller/levelling")
 local BadgeRedemptions = require("shine/extensions/shinecredits/controller/badgeredemptions")
 
-ShineCredits.Version = "2.2"
+ShineCredits.Version = "2.4"
 ShineCredits.PrintName = "Shine Credits"
 
 ShineCredits.HasConfig = true
@@ -238,6 +238,8 @@ ShineCredits.CheckConfigTypes = true
 function ShineCredits:Initialise()
     self:LoadConfig()
 
+    self:TestCommands()
+
     -- Initialise Utilities
     self:InitialiseUtility()
 
@@ -278,6 +280,41 @@ end
 -- Hooks
 -- ----------------------------------------------------------------------------
 -- ============================================================================
+
+function ShineCredits:TestCommands()
+    local function DrawDecal(client, material, scale, lifetime)
+        local localPlayer = client:GetControllingPlayer()
+        if localPlayer and material then
+            -- trace to a surface and draw the decal
+            local startPoint = localPlayer:GetEyePos()
+            local endPoint = startPoint + localPlayer:GetViewCoords().zAxis * 100
+            local trace = Shared.TraceRay(startPoint, endPoint,  CollisionRep.Default, PhysicsMask.Bullets, EntityFilterAll())
+
+            if trace.fraction ~= 1 then
+
+                local coords = Coords.GetTranslation(trace.endPoint)
+                coords.yAxis = trace.normal
+                coords.zAxis = coords.yAxis:GetPerpendicular()
+                coords.xAxis = coords.yAxis:CrossProduct(coords.zAxis)
+
+                scale = scale and tonumber(scale) or 1.5
+                lifetime = lifetime and tonumber(lifetime) or 5
+
+                client.CreateTimeLimitedDecal(material, coords, scale, lifetime)
+                Shine:Print("created decal %s", ToString(material))
+            else
+                Shine:Print("usage: drawdecal <materialname> <scale>")
+            end
+        end
+    end
+
+    local TestSprayCommand = ShineCredits:BindCommand( "sc_testspray",
+        "testspray", DrawDecal )
+    TestSprayCommand:AddParam{ Type = "string", Help = "Material" }
+    TestSprayCommand:AddParam{ Type = "number", Help = "Scale" }
+    TestSprayCommand:AddParam{ Type = "number", Help = "Lifetime" }
+	TestSprayCommand:Help( "Test Spray")
+end
 
 -- ============================================================================
 -- ShineCredits:PostJoinTeam

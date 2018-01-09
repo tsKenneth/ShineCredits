@@ -296,7 +296,6 @@ function CreditsAwarding:CreateCreditsCommands(Plugin)
         end
         Credits:SaveCredits()
         self.Notifications:Notify(LocalPlayer, "Credits Set")
-        self.Notifications:ConsoleMessage( LocalPlayer, "Credits Set" )
     end
 	local SetCreditsCommand = Plugin:BindCommand( CommandsFile.SetCredits.Console,
         CommandsFile.SetCredits.Chat, SetCredits )
@@ -314,7 +313,6 @@ function CreditsAwarding:CreateCreditsCommands(Plugin)
         end
         Credits:SaveCredits()
         self.Notifications:Notify(LocalPlayer, "Credits Added")
-        self.Notifications:ConsoleMessage( LocalPlayer, "Added" )
     end
 	local AddCreditsCommand = Plugin:BindCommand( CommandsFile.AddCredits.Console,
         CommandsFile.AddCredits.Chat, AddCredits )
@@ -328,13 +326,15 @@ function CreditsAwarding:CreateCreditsCommands(Plugin)
         local LocalPlayer = Client:GetControllingPlayer()
         local LocalCredits = Credits:GetPlayerCredits( LocalPlayer )
 
-        local ViewString = "Credits Info for " ..
-        Shine.GetClientInfo( Client ) .. "\n"
-        .. "Total Credits: " .. LocalCredits.Total
-        .. " | Current Credits: " .. LocalCredits.Current
+        self.Notifications:Notify(LocalPlayer,
+        "Credits Info for " .. Shine.GetClientInfo( Client ))
 
-        self.Notifications:Notify(LocalPlayer, ViewString)
-        self.Notifications:ConsoleMessage( LocalPlayer, ViewString )
+        self.Notifications:Notify(LocalPlayer,
+        "Total Credits: " .. LocalCredits.Total,false)
+
+        self.Notifications:Notify(LocalPlayer,
+        "Current Credits: " .. LocalCredits.Current,false)
+
     end
 
     local ViewCreditsCommand = Plugin:BindCommand( CommandsFile.ViewCredits.Console,

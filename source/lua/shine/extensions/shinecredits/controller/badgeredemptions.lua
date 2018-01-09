@@ -133,12 +133,13 @@ function BadgeRedemptions:RedeemBadge( Player, NewBadge )
     end
 
     -- Subtract credits by the cost, return false if insufficient credits
-    if Credits:SpendCredits(Player ,
+    if self.Credits:SpendPlayerCredits(Player ,
         self.BadgesMenu:GetInfo(NewBadge).Cost) then
 
         for _,row in ipairs(Settings.BadgeRows) do
-            self.Badges:AddBadge(Player, NewBadgeName, row)
+            self.Badges:AddBadge(Player, NewBadge, row)
         end
+        self.Credits:SaveCredits()
         self.Badges:SavePlayerBadges()
         return true
     else
@@ -177,7 +178,6 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
         end
 
         self.Notifications:Notify(LocalPlayer, ReturnMessage)
-        self.Notifications:ConsoleMessage(LocalPlayer, ReturnMessage)
     end
 
     local RedeemBadgeCommand = Plugin:BindCommand( Commands.RedeemBadge.Console,
@@ -187,27 +187,24 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
 
 
     -- ====== View Badges ======
-    local function ViewItemMenu( Client , Page)
+    local function ViewBadges( Client )
         local LocalPlayer = Client:GetControllingPlayer()
-        local ItemIndex = 1
         local LocalBadgesMenu = self.BadgesMenu:GetAllInfo()
-        local PageString = string.format("\n| %5s | %50s | %80s | %10s |\n",
-            "Index","Name", "Description", "Cost")
+        self.Notifications:Notify(LocalPlayer,string.format("%s %s %s",
+            "[Name]", "Description -", "Cost"))
 
         for Name, Badge in pairs( LocalBadgesMenu ) do
-            PageString = PageString .. string.format("| %7s | %50s | %80s | %10s |\n",
-                ItemIndex, Name, Badge.Description, Badge.Cost)
-            ItemIndex = ItemIndex + 1
+            self.Notifications:Notify(LocalPlayer,
+                string.format("[%s] %s - %s",
+                Name, Badge.Description, Badge.Cost),false)
         end
+        self.Notifications:Notify(LocalPlayer,
+            "Type !redeembadge <badgename> to redeem.",false)
 
-        PageString = PageString .. "\n type !redeembadge <badgename> to redeem"
-
-        self.Notifications:ConsoleMessage(LocalPlayer, PageString)
     end
 
     local ViewItemMenuCommand = Plugin:BindCommand( Commands.ViewBadges.Console,
-        Commands.ViewBadges.Chat, ViewItemMenu )
-    ViewItemMenuCommand:AddParam{ Type = "number", Optional = true, Default = 1, Help = "Page Number:Integer" }
+        Commands.ViewBadges.Chat, ViewBadges )
     ViewItemMenuCommand:Help( "View badges redeemable with credits." )
 
     -- ====== Add Badges ======
@@ -218,7 +215,6 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
         if CostArg == nil or CostArg < 0 then
             ReturnMessage = "Cost cannot be negative."
             self.Notifications:Notify(LocalPlayer, ReturnMessage)
-            self.Notifications:ConsoleMessage(LocalPlayer, ReturnMessage)
             return false
         end
 
@@ -231,7 +227,6 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
         end
 
         self.Notifications:Notify(LocalPlayer, ReturnMessage)
-        self.Notifications:ConsoleMessage(LocalPlayer, ReturnMessage)
     end
 
 	local AddBadgeCommand = Plugin:BindCommand( Commands.AddBadge.Console,
@@ -239,7 +234,8 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
     AddBadgeCommand:AddParam{ Type = "string", Help = "Badge Name:String" }
     AddBadgeCommand:AddParam{ Type = "string", Help = "Description:String" }
     AddBadgeCommand:AddParam{ Type = "number", Help = "Cost:Integer" }
-	AddBadgeCommand:Help( "Adds a new badge to the menu with the badge name, description and cost provided." )
+	AddBadgeCommand:Help( "Adds a new badge to the menu with the badge name," ..
+        "description and cost provided." )
 
     -- ====== Remove Badges ======
     local function RemoveBadge(Client, BadgeNameArg)
@@ -255,7 +251,6 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
         end
 
         self.Notifications:Notify(LocalPlayer,ReturnMessage)
-        self.Notifications:ConsoleMessage(LocalPlayer, ReturnMessage)
     end
 
     local RemoveBadgeCommand = Plugin:BindCommand( Commands.RemoveBadge.Console,

@@ -56,19 +56,19 @@ function BadgeRedemptions:CheckConfig(CreditsAwardingConfig)
 
     --- Check Dependencies
     if self.Credits:GetIsEnabled() == false then
-        error("ShineCredits CreditsAwarding:CheckConfig() - Error in config, " ..
+        error("ShineCredits BadgeRedemptions:CheckConfig() - Error in config, " ..
             "Subsystem requires Credits model to be enabled.")
         CheckFlag = false
     end
 
     if self.Badges:GetIsEnabled() == false then
-        error("ShineCredits CreditsAwarding:CheckConfig() - Error in config, " ..
+        error("ShineCredits BadgeRedemptions:CheckConfig() - Error in config, " ..
             "Subsystem requires Badges model to be enabled.")
         CheckFlag = false
     end
 
     if self.BadgesMenu:GetIsEnabled() == false then
-        error("ShineCredits CreditsAwarding:CheckConfig() - Error in config, " ..
+        error("ShineCredits BadgeRedemptions:CheckConfig() - Error in config, " ..
             "Subsystem requires BadgesMenu model to be enabled.")
         CheckFlag = false
     end
@@ -181,7 +181,7 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
     end
 
     local RedeemBadgeCommand = Plugin:BindCommand( Commands.RedeemBadge.Console,
-        Commands.RedeemBadge.Chat, RedeemBadge )
+        Commands.RedeemBadge.Chat, RedeemBadge,true, true )
     RedeemBadgeCommand:AddParam{ Type = "string", Help = "Badge Name: String" }
     RedeemBadgeCommand:Help( "Redeems the badge with the name specified" )
 
@@ -204,7 +204,7 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
     end
 
     local ViewItemMenuCommand = Plugin:BindCommand( Commands.ViewBadges.Console,
-        Commands.ViewBadges.Chat, ViewBadges )
+        Commands.ViewBadges.Chat, ViewBadges ,true, true )
     ViewItemMenuCommand:Help( "View badges redeemable with credits." )
 
     -- ====== Add Badges ======

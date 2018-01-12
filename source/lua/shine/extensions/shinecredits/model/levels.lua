@@ -17,7 +17,7 @@
 -- ============================================================================
 
 local Levels = { _version = "0.1.0" }
-local Json = require("shine/extensions/shinecredits/utility/json")
+local JsonLib = require("shine/extensions/shinecredits/utility/json")
 
 Levels.Settings = {}
 Levels.LevelsFile = {}
@@ -64,11 +64,11 @@ end
 -- Saves and loads player and commander levels
 -- ============================================================================
 function Levels:LoadLevels()
-    return Json:LoadTable(self.Settings.FilePath)
+    return JsonLib:LoadTable(self.Settings.FilePath)
 end
 
 function Levels:SaveLevels()
-    return Json:SaveTable(self.LevelsFile,self.Settings.FilePath)
+    return JsonLib:SaveTable(self.LevelsFile,self.Settings.FilePath)
 end
 
 -- ============================================================================

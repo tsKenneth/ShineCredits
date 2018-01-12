@@ -15,28 +15,34 @@
 -- ----------------------------------------------------------------------------
 -- ============================================================================
 
-local Shine = Shine
-local ShineCredits = {}
+-- Utilities
 local Notifications = require("shine/extensions/shinecredits/utility/notifications")
 
 -- Models
 local Credits = require("shine/extensions/shinecredits/model/credits")
-local Badges = require("shine/extensions/shinecredits/model/badges")
 local Levels = require("shine/extensions/shinecredits/model/levels")
+local Badges = require("shine/extensions/shinecredits/model/badges")
+--local Sprays = require("shine/extensions/shinecredits/model/sprays")
+
+-- Models - Menus
 local BadgesMenu = require("shine/extensions/shinecredits/model/badgesmenu")
+--local SpraysMenu = require("shine/extensions/shinecredits/model/spraysmenu")
 
 -- Controllers
 local CreditsAwarding = require("shine/extensions/shinecredits/controller/creditsawarding")
 local Levelling = require("shine/extensions/shinecredits/controller/levelling")
+
+-- Controllers - Redemptions
 local BadgeRedemptions = require("shine/extensions/shinecredits/controller/badgeredemptions")
+--local SprayRedemptions = require("shine/extensions/shinecredits/controller/sprayredemptions")
 
-ShineCredits.Version = "2.4"
-ShineCredits.PrintName = "Shine Credits"
+Plugin.Version = "2.8"
+Plugin.PrintName = "Shine Credits"
 
-ShineCredits.HasConfig = true
-ShineCredits.ConfigName = "ShineCredits.json"
+Plugin.HasConfig = true
+Plugin.ConfigName = "ShineCredits.json"
 
-ShineCredits.DefaultConfig = {
+Plugin.DefaultConfig = {
     Storage = {
         Mode = "Files",
         Files = {
@@ -48,11 +54,6 @@ ShineCredits.DefaultConfig = {
             Password = nil
         },
         Models = {
-            Badges = {
-                Enabled = true,
-                FileName = "ShineCredits_PlayerBadges.json",
-                MaxBadgeRows = 8
-            },
             Credits = {
                 Enabled = true,
                 FileName = "ShineCredits_PlayerCredits.json"
@@ -60,12 +61,25 @@ ShineCredits.DefaultConfig = {
             Levels = {
                 Enabled = true,
                 FileName = "ShineCredits_PlayerLevels.json"
+            },
+            Badges = {
+                Enabled = true,
+                FileName = "ShineCredits_PlayerBadges.json",
+                MaxBadgeRows = 8
+            },
+            Sprays = {
+                Enabled = true,
+                FileName = "ShineCredits_PlayerSprays.json"
             }
         },
         RedemptionMenus = {
             BadgesMenu = {
                 Enabled = true,
                 FileName = "ShineCredits_BadgesMenu.json"
+            },
+            SpraysMenu = {
+                Enabled = true,
+                FileName = "ShineCredits_SpraysMenu.json"
             }
         },
     },
@@ -99,14 +113,23 @@ ShineCredits.DefaultConfig = {
                 "level54","level55","bay_red","bay_silver","bay_supporter",
                 "bay_gold","bay_platinum"
             },
-            ChatItemsPerPage = 10,
             Commands = {
                 RedeemBadge = {Console = "sc_redeembadge", Chat="redeembadge"},
                 ViewBadges = {Console = "sc_viewbadge", Chat="viewbadge"},
                 AddBadge = {Console = "sc_addbadge", Chat="addbadge"},
                 RemoveBadge = {Console = "sc_removebadge", Chat="removebadge"}
             }
-        }
+        },
+        Sprays = {
+            Enabled = true,
+            ConfigDebug = true,
+            Commands = {
+                RedeemSpray = {Console = "sc_redeemspray", Chat="redeemspray"},
+                ViewSprays = {Console = "sc_viewspray", Chat="viewspray"},
+                AddSpray = {Console = "sc_addspray", Chat="addspray"},
+                RemoveSpray = {Console = "sc_removespray", Chat="removespray"}
+            }
+        },
     },
     CreditsAwarding = {
         Enabled = true,
@@ -114,10 +137,12 @@ ShineCredits.DefaultConfig = {
         Player = {
             Enabled = true,
             CreditsFormula = {
-                MaximumAwardedPerRound = 500,
+                NewPlayerBonus = 50,
+                MaximumAwardedPerRound = 300,
                 Formula = {
                     Time = {
-                        CreditsPerMinute = 1
+                        CreditsPerMinute = 1,
+                        CommanderBonusCreditsPerMinute = 2
                     },
                     Score = {
                         CreditsPerScore = 0.1,
@@ -167,7 +192,7 @@ ShineCredits.DefaultConfig = {
             },
             NextLevelFormula = {
                 MaximumLevel = 55,
-                Formula = "x^1"
+                Formula = "x^2"
             },
             Badges = {
                 Enabled = true,
@@ -199,7 +224,7 @@ ShineCredits.DefaultConfig = {
             },
             NextLevelFormula = {
                 MaximumLevel = 5,
-                Formula = "x^1"
+                Formula = "x^2"
             },
             Badges = {
                 Enabled = true,
@@ -227,18 +252,16 @@ ShineCredits.DefaultConfig = {
     }
 }
 
-ShineCredits.CheckConfig = true
-ShineCredits.CheckConfigTypes = true
+Plugin.CheckConfig = true
+Plugin.CheckConfigTypes = true
 
 -- ============================================================================
 -- Levelling:Initialise
 -- Initialise the Shine Credits System
 -- ============================================================================
 
-function ShineCredits:Initialise()
+function Plugin:Initialise()
     self:LoadConfig()
-
-    self:TestCommands()
 
     -- Initialise Utilities
     self:InitialiseUtility()
@@ -252,18 +275,19 @@ function ShineCredits:Initialise()
 	return true
 end
 
-function ShineCredits:InitialiseUtility()
+function Plugin:InitialiseUtility()
     Notifications:Initialise(self.Config.Utility.Notifications)
 end
 
-function ShineCredits:InitialiseModels()
-    Badges:Initialise(self.Config.Storage)
+function Plugin:InitialiseModels()
     Credits:Initialise(self.Config.Storage)
     Levels:Initialise(self.Config.Storage)
+    Badges:Initialise(self.Config.Storage)
+
     BadgesMenu:Initialise(self.Config.Storage)
 end
 
-function ShineCredits:InitialiseControllers()
+function Plugin:InitialiseControllers()
     Levelling:Initialise(self.Config.Levelling,
     Notifications ,Badges, Levels, self)
 
@@ -281,58 +305,23 @@ end
 -- ----------------------------------------------------------------------------
 -- ============================================================================
 
-function ShineCredits:TestCommands()
-    local function DrawDecal(client, material, scale, lifetime)
-        local localPlayer = client:GetControllingPlayer()
-        if localPlayer and material then
-            -- trace to a surface and draw the decal
-            local startPoint = localPlayer:GetEyePos()
-            local endPoint = startPoint + localPlayer:GetViewCoords().zAxis * 100
-            local trace = Shared.TraceRay(startPoint, endPoint,  CollisionRep.Default, PhysicsMask.Bullets, EntityFilterAll())
-
-            if trace.fraction ~= 1 then
-
-                local coords = Coords.GetTranslation(trace.endPoint)
-                coords.yAxis = trace.normal
-                coords.zAxis = coords.yAxis:GetPerpendicular()
-                coords.xAxis = coords.yAxis:CrossProduct(coords.zAxis)
-
-                scale = scale and tonumber(scale) or 1.5
-                lifetime = lifetime and tonumber(lifetime) or 5
-
-                client.CreateTimeLimitedDecal(material, coords, scale, lifetime)
-                Shine:Print("created decal %s", ToString(material))
-            else
-                Shine:Print("usage: drawdecal <materialname> <scale>")
-            end
-        end
-    end
-
-    local TestSprayCommand = ShineCredits:BindCommand( "sc_testspray",
-        "testspray", DrawDecal )
-    TestSprayCommand:AddParam{ Type = "string", Help = "Material" }
-    TestSprayCommand:AddParam{ Type = "number", Help = "Scale" }
-    TestSprayCommand:AddParam{ Type = "number", Help = "Lifetime" }
-	TestSprayCommand:Help( "Test Spray")
-end
-
 -- ============================================================================
--- ShineCredits:PostJoinTeam
+-- Plugin:PostJoinTeam
 -- Called when a player joins a team in the midst of a game
 -- Used to provide controllers access to Shine Hooks
 -- ============================================================================
 -- Called when a player connects
-function ShineCredits:ClientConnect( Client )
-    local LocalPlayer = Client:GetControllingPlayer()
+function Plugin:ClientConnect( client )
+    local LocalPlayer = client:GetControllingPlayer()
 
-    Badges:InitPlayer(LocalPlayer)
     Credits:InitPlayer(LocalPlayer)
     Levels:InitPlayer(LocalPlayer)
+    Badges:InitPlayer(LocalPlayer)
 end
 
 
---
-function ShineCredits:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force,
+-- Called when a player joins a team
+function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force,
      ShineForce )
 
     Levelling:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force,
@@ -343,16 +332,14 @@ function ShineCredits:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force,
 end
 
 -- Called when game starts or stops
-function ShineCredits:SetGameState( Gamerules, NewState, OldState )
+function Plugin:SetGameState( Gamerules, NewState, OldState )
     Levelling:SetGameState( Gamerules, NewState, OldState )
     CreditsAwarding:SetGameState( Gamerules, NewState, OldState )
 
 end
 
 -- Called when the map changes
-function ShineCredits:MapChange()
+function Plugin:MapChange()
     Levelling:MapChange()
     CreditsAwarding:MapChange()
 end
-
-Shine:RegisterExtension("shinecredits", ShineCredits)

@@ -4,15 +4,12 @@
 --      Shine Credits will manipulate badges for leveling and redemption
 --      purposes. This model aims to manage inserting and removing badges.
 --
--- This model obtains data from the levelling.lua and redemptions.lua
--- controllers and processes it
---
 -- ============================================================================
 
 local Shine = Shine
 local Badges = { _version = "0.1.0" }
 
-local Json = require("shine/extensions/shinecredits/utility/json")
+local JsonLib = require("shine/extensions/shinecredits/utility/json")
 
 Badges.BadgesFile = {}
 
@@ -24,7 +21,7 @@ Badges.BadgesFile = {}
 
 function Badges:Initialise(StorageConfig)
     self.Settings = StorageConfig.Models.Badges
-    
+
     if self.Settings and self.Settings.Enabled then
         self.Settings.FilePath = StorageConfig.Files.Directory ..
             self.Settings.FileName
@@ -47,10 +44,22 @@ function Badges:InitPlayer( Player )
     local Settings = self.Settings
     local SteamID = tostring(Player:GetSteamId())
     local SaveFlag = false
+    local Result = false
 
     -- Get Player Config Data
     local Target = Player:GetClient()
     local Existing, _ = Shine:GetUserData( Target )
+
+    if not Existing then
+        Result = Shine:CreateUser( Target, "Pleb")
+        if Result then
+            return true
+        else
+            error("ShineCredits Badges:InitPlayer() - Error, " ..
+                "failed to create a new user")
+            return false
+        end
+    end
 
     -- Checks if the badges in userconfig are correct
     if not Existing["Badges"] then
@@ -93,12 +102,12 @@ end
 -- ============================================================================
 
 function Badges:LoadPlayerBadges()
-    return Json:LoadTable(self.Settings.FilePath)
+    return JsonLib:LoadTable(self.Settings.FilePath)
 end
 
 function Badges:SavePlayerBadges()
     Shine:SaveUsers( true )
-    return Json:SaveTable(self.BadgesFile,self.Settings.FilePath)
+    return JsonLib:SaveTable(self.BadgesFile,self.Settings.FilePath)
 end
 
 -- ============================================================================
@@ -147,8 +156,14 @@ end
 function Badges:AddBadge( Player , NewBadge, BadgeRow )
     local Settings = self.Settings
     local LocalBadgesFile = self.BadgesFile
+
     local Target = Player:GetClient()
     local Existing, SteamID = Shine:GetUserData( Target )
+
+    if not Existing then
+        return false
+    end
+
     SteamID = tostring(SteamID)
 
     if Existing["Badges"] then
@@ -193,8 +208,14 @@ end
 function Badges:RemoveBadge( Player , OldBadge, BadgeRow)
     local Settings = self.Settings
     local LocalBadgesFile = self.BadgesFile
+
     local Target = Player:GetClient()
     local Existing, SteamID = Shine:GetUserData( Target )
+
+    if not Existing then
+        return false
+    end
+
     SteamID = tostring(SteamID)
 
     if Existing["Badges"] then

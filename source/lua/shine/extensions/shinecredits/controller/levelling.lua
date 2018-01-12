@@ -486,7 +486,7 @@ function Levelling:CreateLevellingCommands(Plugin)
         end
         Levels:SaveLevels()
 
-        self.Notifications:Notify(LocalPlayer, "XP Set")
+        self.Notifications:Notify(LocalPlayer, "XP Set","[Shine Credits]")
     end
 	local SetXPCommand = Plugin:BindCommand( CommandsFile.SetXP.Console,
         CommandsFile.SetXP.Chat, SetXP )
@@ -496,23 +496,19 @@ function Levelling:CreateLevellingCommands(Plugin)
 	SetXPCommand:Help( "Set Levels of the specified player(s)" )
 
     -- ====== Add XP ======
-    local function AddXP( Client, Targets, AmountPlayer, AmountCommander )
+    local function AddXP( Client, Target, AmountPlayer, AmountCommander )
         local LocalPlayer = Client:GetControllingPlayer()
-        for i = 1, #Targets do
-            SteamID = tostring(Targets[ i ]:GetUserId())
-            Levels:AddPlayerXP( Client:GetControllingPlayer(),
-                AmountPlayer )
-            Levels:AddCommanderXP( Client:GetControllingPlayer(),
-                AmountCommander )
-
-        end
+        Levels:AddPlayerXP( Target:GetControllingPlayer(),
+            AmountPlayer )
+        Levels:AddCommanderXP( Target:GetControllingPlayer(),
+            AmountCommander )
         Levels:SaveLevels()
 
-        self.Notifications:Notify(LocalPlayer, "XP Added")
+        self.Notifications:Notify(LocalPlayer, "XP Added","[Shine Credits]")
     end
 	local AddXPCommand = Plugin:BindCommand( CommandsFile.AddXP.Console,
         CommandsFile.AddXP.Chat, AddXP )
-    AddXPCommand:AddParam{ Type = "clients", Help = "Player(s)" }
+    AddXPCommand:AddParam{ Type = "client", Help = "Player" }
     AddXPCommand:AddParam{ Type = "number", Help = "PlayerXP:Integer" }
     AddXPCommand:AddParam{ Type = "number", Help = "CommanderXP:Integer" }
 	AddXPCommand:Help( "Adds Levels to the specified player(s), " ..
@@ -535,24 +531,21 @@ function Levelling:CreateLevellingCommands(Plugin)
             loadstring(CommanderNextLevelFormula)
 
         self.Notifications:Notify(LocalPlayer, "Levels Info for " ..
-            Shine.GetClientInfo( Client ))
+            Shine.GetClientInfo( Client ), "[Shine Credits]")
 
-        self.Notifications:Notify(LocalPlayer,"Current XP (Player/Commander): " ..
-            Summary.PlayerXP .. "/" .. Summary.CommanderXP
+        self.Notifications:Notify(LocalPlayer,"Level: " ..
+            "Player > " .. Summary.PlayerLevel .. ", Commander > "
+            .. Summary.CommanderLevel
             ,false)
 
-        self.Notifications:Notify(LocalPlayer,"Current Level (Player/Commander): " ..
-            Summary.PlayerLevel .. "/" .. Summary.CommanderLevel
-            ,false)
-
-        self.Notifications:Notify(LocalPlayer,"XP to next level (Player/Commander)" ..
-        PlayerNextLevelFunction() - Summary.PlayerXP ..
-        "/" .. CommanderNextLevelFunction() - Summary.CommanderXP,
+        self.Notifications:Notify(LocalPlayer,"XP to next level: " ..
+        "Player > " .. PlayerNextLevelFunction() - Summary.PlayerXP ..
+        ", Commander > " .. CommanderNextLevelFunction() - Summary.CommanderXP,
         false)
     end
 
     local ViewXPCommand = Plugin:BindCommand( CommandsFile.ViewXP.Console,
-        CommandsFile.ViewXP.Chat, ViewXP )
+        CommandsFile.ViewXP.Chat, ViewXP,true, true )
     ViewXPCommand:Help( "Show your Levels information" )
 end
 return Levelling

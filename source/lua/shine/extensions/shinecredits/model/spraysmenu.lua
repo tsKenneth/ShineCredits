@@ -1,16 +1,16 @@
 -- ============================================================================
 --
--- BadgesMenu (Model)
---      The badges menu maintains and lists all the available badges that
+-- SpraysMenu (Model)
+--      The sprays menu maintains and lists all the available sprays that
 --      players can redeem
 --
 -- ============================================================================
 
-local BadgesMenu = { _version = "0.1.0" }
+local SpraysMenu = { _version = "0.1.0" }
 
 local JsonLib = require("shine/extensions/shinecredits/utility/json")
 
-BadgesMenu.BadgesMenu = {}
+SpraysMenu.SpraysMenu = {}
 
 -- ============================================================================
 -- ----------------------------------------------------------------------------
@@ -18,14 +18,14 @@ BadgesMenu.BadgesMenu = {}
 -- ----------------------------------------------------------------------------
 -- ============================================================================
 
-function BadgesMenu:Initialise(StorageConfig)
-    self.Settings = StorageConfig.RedemptionMenus.BadgesMenu
+function SpraysMenu:Initialise(StorageConfig)
+    self.Settings = StorageConfig.RedemptionMenus.SpraysMenu
 
     if self.Settings and self.Settings.Enabled then
         self.Settings.FilePath = StorageConfig.Files.Directory ..
             self.Settings.FileName
 
-        self.BadgesMenu = self:LoadBadgesMenu()
+        self.SpraysMenu = self:LoadSpraysMenu()
 
         return true
     else
@@ -35,15 +35,15 @@ end
 
 -- ============================================================================
 -- FileIO Subsystem:
--- Saves and loads Player Badges
+-- Saves and loads Player Sprays
 -- ============================================================================
 
-function BadgesMenu:LoadBadgesMenu()
+function SpraysMenu:LoadSpraysMenu()
     return JsonLib:LoadTable(self.Settings.FilePath)
 end
 
-function BadgesMenu:SaveBadgesMenu()
-    return JsonLib:SaveTable(self.BadgesMenu,self.Settings.FilePath)
+function SpraysMenu:SaveSpraysMenu()
+    return JsonLib:SaveTable(self.SpraysMenu,self.Settings.FilePath)
 end
 
 -- ============================================================================
@@ -52,26 +52,26 @@ end
 -- ----------------------------------------------------------------------------
 -- ============================================================================
 -- ============================================================================
--- BadgesMenu:GetAllInfo
--- Returns the information on all badges in the badges menu
+-- SpraysMenu:GetAllInfo
+-- Returns the information on all sprays in the sprays menu
 -- ============================================================================
-function BadgesMenu:GetAllInfo()
-    return self.BadgesMenu
+function SpraysMenu:GetAllInfo()
+    return self.SpraysMenu
 end
 
 -- ============================================================================
--- BadgesMenu:GetInfo
--- Returns the information on the specified badge
+-- SpraysMenu:GetInfo
+-- Returns the information on the specified spray
 -- ============================================================================
-function BadgesMenu:GetInfo( Badge )
-    return self.BadgesMenu[Badge]
+function SpraysMenu:GetInfo( Spray )
+    return self.SpraysMenu[Spray]
 end
 
 -- ============================================================================
--- BadgesMenu:GetIsEnabled
+-- SpraysMenu:GetIsEnabled
 -- Returns if the model is enabled
 -- ============================================================================
-function BadgesMenu:GetIsEnabled()
+function SpraysMenu:GetIsEnabled()
     return self.Settings.Enabled
 end
 
@@ -82,25 +82,25 @@ end
 -- ============================================================================
 
 -- ============================================================================
--- BadgesMenu:AddBadge
--- Adds a badge to the menu
+-- SpraysMenu:AddSpray
+-- Adds a spray to the menu
 -- ============================================================================
-function BadgesMenu:AddBadge( NewBadge, DescriptionArg, CostArg )
-    local LocalBadgesMenu = self.BadgesMenu
-    LocalBadgesMenu[NewBadge] = {Description = DescriptionArg, Cost = CostArg}
-    self:SaveBadgesMenu()
+function SpraysMenu:AddSpray( NewSpray, DescriptionArg, CostArg )
+    local LocalSpraysMenu = self.SpraysMenu
+    LocalSpraysMenu[NewSpray] = {Description = DescriptionArg, Cost = CostArg}
+    self:SaveSpraysMenu()
     return true
 
 end
 -- ============================================================================
--- BadgesMenu:RemoveBadge
--- Removes the specified badge from the menu
+-- SpraysMenu:RemoveSpray
+-- Removes the specified spray from the menu
 -- ============================================================================
-function BadgesMenu:RemoveBadge( OldBadge )
-    local LocalBadgesMenu = self.BadgesMenu
-    LocalBadgesMenu[OldBadge] = nil
-    self:SaveBadgesMenu()
+function SpraysMenu:RemoveSpray( OldSpray )
+    local LocalSpraysMenu = self.SpraysMenu
+    LocalSpraysMenu[OldSpray] = nil
+    self:SaveSpraysMenu()
     return true
 end
 
-return BadgesMenu
+return SpraysMenu

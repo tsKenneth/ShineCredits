@@ -14,7 +14,7 @@
 -- ============================================================================
 
 local Credits = { _version = "0.1.0" }
-local Json = require("shine/extensions/shinecredits/utility/json")
+local JsonLib = require("shine/extensions/shinecredits/utility/json")
 
 Credits.Settings = {}
 Credits.CreditsFile = {}
@@ -63,11 +63,11 @@ end
 -- Saves and loads player and commander Credits
 -- ============================================================================
 function Credits:LoadCredits()
-    return Json:LoadTable(self.Settings.FilePath)
+    return JsonLib:LoadTable(self.Settings.FilePath)
 end
 
 function Credits:SaveCredits()
-    return Json:SaveTable(self.CreditsFile,self.Settings.FilePath)
+    return JsonLib:SaveTable(self.CreditsFile,self.Settings.FilePath)
 end
 
 -- ============================================================================

@@ -117,12 +117,16 @@ end
 -- Introduce player into the system
 -- ============================================================================
 function CreditsAwarding:ClientConnect( Client )
+    local LocalPlayer = Client:GetControllingPlayer()
     -- Check if controller is enabled
     if self.Settings.Enabled == false then
         return false
     end
 
-    self.Credits:InitPlayer( Client:GetControllingPlayer() )
+    local NewPlayerbonus = self.Settings.Player.CreditsFormula.NewPlayerBonus
+
+    self.Credits:InitPlayer( LocalPlayer )
+    self.Credits:AddPlayerCredits( LocalPlayer, NewPlayerbonus, NewPlayerbonus)
 end
 
 -- ============================================================================
@@ -173,6 +177,8 @@ function CreditsAwarding:StopCredits( Player, Victory )
     PlayerCreditsAwarded =
     math.Round(FormulaPlayer.Formula.Time.CreditsPerMinute *
         math.Round(Player:GetPlayTime()/60,0),0) +
+    math.Round(FormulaPlayer.Formula.Time.CommanderBonusCreditsPerMinute *
+        math.Round(Player:GetCommanderTime()/60,0),0) +
     math.Round(FormulaPlayer.Formula.Score.CreditsPerScore * Player:GetScore(),0) +
     math.Round(FormulaPlayer.Formula.Score.CreditsPerKill * Player:GetKills(),0) +
     math.Round(FormulaPlayer.Formula.Score.CreditsPerAssist * Player:GetAssistKills(),0)
@@ -287,36 +293,28 @@ function CreditsAwarding:CreateCreditsCommands(Plugin)
     local Credits = self.Credits
 
     -- ====== Set Credits ======
-    local function SetCredits( Client, Targets, Amount )
+    local function SetCredits( Client, Target, Amount )
         local LocalPlayer = Client:GetControllingPlayer()
-        for i = 1, #Targets do
-            SteamID = tostring(Targets[ i ]:GetUserId())
-            Credits:SetPlayerCredits( Client:GetControllingPlayer(),
-                Amount, Amount )
-        end
+        Credits:SetPlayerCredits( Target:GetControllingPlayer())
         Credits:SaveCredits()
         self.Notifications:Notify(LocalPlayer, "Credits Set")
     end
 	local SetCreditsCommand = Plugin:BindCommand( CommandsFile.SetCredits.Console,
         CommandsFile.SetCredits.Chat, SetCredits )
-    SetCreditsCommand:AddParam{ Type = "clients", Help = "Player(s)" }
+    SetCreditsCommand:AddParam{ Type = "client", Help = "Player" }
     SetCreditsCommand:AddParam{ Type = "number", Help = "Credits:Integer" }
 	SetCreditsCommand:Help( "Set credits of the specified player(s)" )
 
     -- ====== Add Credits ======
-    local function AddCredits( Client, Targets, Amount )
+    local function AddCredits( Client, Target, Amount )
         local LocalPlayer = Client:GetControllingPlayer()
-        for i = 1, #Targets do
-            SteamID = tostring(Targets[ i ]:GetUserId())
-            Credits:AddPlayerCredits( Client:GetControllingPlayer(),
-                Amount, Amount )
-        end
+        Credits:AddPlayerCredits( Target:GetControllingPlayer())
         Credits:SaveCredits()
         self.Notifications:Notify(LocalPlayer, "Credits Added")
     end
 	local AddCreditsCommand = Plugin:BindCommand( CommandsFile.AddCredits.Console,
         CommandsFile.AddCredits.Chat, AddCredits )
-    AddCreditsCommand:AddParam{ Type = "clients", Help = "Player(s)" }
+    AddCreditsCommand:AddParam{ Type = "client", Help = "Player" }
     AddCreditsCommand:AddParam{ Type = "number", Help = "Credits:Integer" }
 	AddCreditsCommand:Help( "Adds credits to the specified player(s), " ..
         "input a negative integer to subtract")
@@ -330,15 +328,15 @@ function CreditsAwarding:CreateCreditsCommands(Plugin)
         "Credits Info for " .. Shine.GetClientInfo( Client ))
 
         self.Notifications:Notify(LocalPlayer,
-        "Total Credits: " .. LocalCredits.Total,false)
+        "Total Earned > " .. LocalCredits.Total,false)
 
         self.Notifications:Notify(LocalPlayer,
-        "Current Credits: " .. LocalCredits.Current,false)
+        "Available > " .. LocalCredits.Current,false)
 
     end
 
     local ViewCreditsCommand = Plugin:BindCommand( CommandsFile.ViewCredits.Console,
-        CommandsFile.ViewCredits.Chat, ViewCredits )
+        CommandsFile.ViewCredits.Chat, ViewCredits,true, true )
     ViewCreditsCommand:Help( "Show your credits information" )
 end
 

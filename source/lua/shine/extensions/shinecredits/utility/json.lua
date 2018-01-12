@@ -1,5 +1,5 @@
 --
--- json.lua
+-- jsonlib.lua
 --
 -- Copyright (c) 2015 rxi
 --
@@ -7,7 +7,7 @@
 -- under the terms of the MIT license. See LICENSE for details.
 --
 
-local json = { _version = "0.1.0" }
+local jsonlib = { _version = "0.1.0" }
 
 -------------------------------------------------------------------------------
 -- Encode
@@ -116,7 +116,7 @@ encode = function(val, stack)
 end
 
 
-function json.encode(val)
+function jsonlib.encode(val)
   return encode(val)
 end
 
@@ -369,7 +369,7 @@ parse = function(str, idx)
 end
 
 
-function json.decode(str)
+function jsonlib.decode(str)
   if type(str) ~= "string" then
     error("expected argument of type string, got " .. type(str))
   end
@@ -380,11 +380,11 @@ end
 -- Helper Functions
 -------------------------------------------------------------------------------
 -- Save to file
-function json:SaveTable( Table, FilePath )
+function jsonlib:SaveTable( Table, FilePath )
     local file = io.open(FilePath, "w")
 
      if file then
-        local contents = json.encode( Table )
+        local contents = jsonlib.encode( Table )
         file:write( contents )
         io.close( file )
         return true
@@ -394,7 +394,7 @@ function json:SaveTable( Table, FilePath )
 end
 
 -- Load from file
-function json:LoadTable( FilePath )
+function jsonlib:LoadTable( FilePath )
     local contents = ""
     local myTable = {}
     local file = io.open( FilePath, "r" )
@@ -402,12 +402,12 @@ function json:LoadTable( FilePath )
     if file then
         -- If file exists
         contents = file:read( "*a" )
-        myTable = json.decode(contents);
+        myTable = jsonlib.decode(contents);
         io.close( file )
         return myTable
     else
         -- If file does not exist
-        json:SaveTable({}, FilePath )
+        jsonlib:SaveTable({}, FilePath )
         return {}
     end
 
@@ -415,4 +415,4 @@ function json:LoadTable( FilePath )
 end
 
 
-return json
+return jsonlib

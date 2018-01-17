@@ -57,7 +57,7 @@ function CreditsAwarding:CheckConfig(CreditsAwardingConfig)
 
     --- Check Dependencies
     if self.Credits:GetIsEnabled() == false then
-        error("ShineCredits CreditsAwarding:CheckConfig() - Error in config, " ..
+        Shine:Print("ShineCredits CreditsAwarding:CheckConfig() - Error in config, " ..
             "Subsystem requires Credits model to be enabled.")
         CheckFlag = false
     end
@@ -105,9 +105,9 @@ function CreditsAwarding:SetGameState( Gamerules, NewState, OldState )
 
     -- If new state is 5:"Game Started"
     if NewState == 5 then
-        self:StartCreditsAllInTeam()
+        self:StartAllCredits()
     elseif NewState >= 6 and NewState < 9 then
-        self:StopCreditsAllInTeam(NewState)
+        self:StopAllCredits(NewState)
     end
     return true
 end
@@ -134,14 +134,7 @@ end
 -- Stops credits when map is changing in the middle of the game
 -- ============================================================================
 function CreditsAwarding:MapChange()
-    if self.Settings.Enabled == false then
-        return false
-    end
-
-    if Gamerules:GetGameStarted() then
-        -- Induce a draw scenario
-        self:StopCreditsAllInTeam(8)
-    end
+    self.Credits:SaveCredits()
 end
 
 -- ============================================================================
@@ -161,7 +154,7 @@ end
 -- CreditsAwarding:StopCredits
 -- Stops accruing self.Credits for the player, calculate and award self.Credits
 -- ============================================================================
-function CreditsAwarding:StopCredits( Player, Victory )
+function CreditsAwarding:StopCredits( Player, GameState )
     local Settings = self.Settings
     local FormulaPlayer = Settings.Player.CreditsFormula
 
@@ -184,6 +177,13 @@ function CreditsAwarding:StopCredits( Player, Victory )
     math.Round(FormulaPlayer.Formula.Score.CreditsPerAssist * Player:GetAssistKills(),0)
 
     -- Apply Multipliers
+    local Victory = false
+    if GameState == 6 and Player:GetTeamNumber() == 1 then
+        Victory = true
+    elseif GameState == 7 and Player:GetTeamNumber() == 2 then
+        Victory = true
+    end
+
     if Victory then
         PlayerCreditsAwarded = math.Round(PlayerCreditsAwarded
             * FormulaPlayer.Formula.Multipliers.Victory,0)
@@ -202,53 +202,33 @@ function CreditsAwarding:StopCredits( Player, Victory )
     self.Notifications:Notify(Player,
         string.format(NotificationText,PlayerCreditsAwarded))
 
-    self.Credits:SaveCredits()
     return true
 
 end
 
 -- ============================================================================
--- CreditsAwarding:StartCreditsAllInTeam
--- Starts accruing self.Credits for the player for all players in playing teams
+-- CreditsAwarding:StartAllCredits
+-- Starts accruing self.Credits for the player for all players
 -- ============================================================================
-function CreditsAwarding:StartCreditsAllInTeam()
-    local team1Players = GetGamerules():GetTeam1():GetPlayers()
-    local team2Players = GetGamerules():GetTeam2():GetPlayers()
+function CreditsAwarding:StartAllCredits()
+    local AllPlayers = Shine.GetAllPlayers()
 
-    -- For all players in Marines
-    for _, team1Player in ipairs(team1Players) do
-        self:StartCredits(team1Player)
-    end
-
-    -- For all players in Aliens
-    for _, team2Player in ipairs(team2Players) do
-        self:StartCredits(team2Player)
+    for _, player in ipairs(AllPlayers) do
+        self:StartCredits(player)
     end
 
 end
 
 -- ============================================================================
--- CreditsAwarding:StopCreditsAllInTeam
--- Stops accruing self.Credits for the player for all players in playing teams
+-- CreditsAwarding:StopAllCredits
+-- Stops accruing self.Credits for the player for all players
 -- ============================================================================
-function CreditsAwarding:StopCreditsAllInTeam(GameState)
-    local team1Players = GetGamerules():GetTeam1():GetPlayers()
-    local team2Players = GetGamerules():GetTeam2():GetPlayers()
-    local MarineVictoryFlag = false
-    local AlienVictoryFlag = false
+function CreditsAwarding:StopAllCredits(GameState)
+    local AllPlayers = Shine.GetAllPlayers()
 
-    if GameState == 6 then
-        MarineVictoryFlag = true
-    elseif GameState == 7 then
-        AlienVictoryFlag = true
-    end
-
-    for _, team1Player in ipairs(team1Players) do
-        self:StopCredits(team1Player, MarineVictoryFlag)
-    end
-
-    for _, team2Player in ipairs(team2Players) do
-        self:StopCredits(team2Player, AlienVictoryFlag)
+    for _, player in ipairs(AllPlayers) do
+        self:StopCredits(player, GameState)
+        self.Credits:SaveCredits()
     end
 end
 

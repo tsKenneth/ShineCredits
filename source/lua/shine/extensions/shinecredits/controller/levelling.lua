@@ -61,13 +61,13 @@ function Levelling:CheckConfig(LevellingConfig)
 
     -- Check Dependencies
     if self.Badges:GetIsEnabled() == false then
-        error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+        Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
             "Subsystem requires Badges model to be enabled.")
         CheckFlag = false
     end
 
     if self.Levels:GetIsEnabled() == false then
-        error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+        Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
             "Subsystem requires Levels model to be enabled.")
         CheckFlag = false
     end
@@ -76,7 +76,7 @@ function Levelling:CheckConfig(LevellingConfig)
     if LevellingConfig.Player.Enabled then
         if string.find(LevellingConfig.Player.NextLevelFormula.Formula, "x")
             == nil then
-            error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+            Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
                 "Player.NextLevelFormula.Formula must contain " ..
                 "a letter x to signify level as a variable")
             CheckFlag = false
@@ -86,13 +86,13 @@ function Levelling:CheckConfig(LevellingConfig)
     elseif LevellingConfig.Player.Badges.Enabled then
         if #LevellingConfig.Player.Badges.CustomBadgesOrder <
         LevellingConfig.Player.NextLevelFormula.MaximumLevel then
-            error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+            Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
             "Player.Badges.CustomBadgesOrder must have more" ..
             "elements (badges) than the number of self.Levels")
             CheckFlag = false
         elseif LevellingConfig.Player.Badges.BadgesOrder.BadgeRow
         < 1 then
-            error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+            Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
             "Commander.Badges.BadgesOrder.LocalBadgeRow must be " ..
             "greater than 0")
             CheckFlag = false
@@ -103,7 +103,7 @@ function Levelling:CheckConfig(LevellingConfig)
     if LevellingConfig.Commander.Enabled then
         if string.find(LevellingConfig.Commander.NextLevelFormula.Formula, "x")
             == nil then
-            error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+            Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
                 "Commander.NextLevelFormula.Formula must contain " ..
                 "a letter x to signify level as a variable")
             CheckFlag = false
@@ -113,13 +113,13 @@ function Levelling:CheckConfig(LevellingConfig)
     elseif LevellingConfig.Commander.Badges.Enabled then
         if #LevellingConfig.Commander.Badges.CustomBadgesOrder <
         LevellingConfig.Commander.NextLevelFormula.MaximumLevel then
-            error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+            Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
             "Commander.Badges.CustomBadgesOrder must have more" ..
             "elements (badges) than the number of self.Levels")
             CheckFlag = false
         elseif LevellingConfig.Commander.Badges.BadgesOrder.BadgeRow
         < 1 then
-            error("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+            Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
             "Commander.Badges.BadgesOrder.LocalBadgeRow must be " ..
             "greater than 0")
             CheckFlag = false
@@ -141,6 +141,11 @@ end
 -- ============================================================================
 function Levelling:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force,
     ShineForce )
+
+    if self.Settings.Enabled == false then
+        return false
+    end
+
     -- Check if team changed to is 1:Marine Team, 2:Alien Team
     if Gamerules:GetGameStarted() and (NewTeam == 1 or NewTeam == 2) then
         self:StartXP(Player)
@@ -156,11 +161,15 @@ end
 -- Starts or stops XP accrueing when game changes state
 -- ============================================================================
 function Levelling:SetGameState( Gamerules, NewState, OldState )
+    if self.Settings.Enabled == false then
+        return false
+    end
+
     -- If new state is 5:"Game Started"
     if NewState == 5 then
-        self:StartXPAllInTeam()
+        self:StartAllXP()
     elseif NewState >= 6 and NewState < 9 then
-        self:StopXPAllInTeam(NewState)
+        self:StopAllXP(NewState)
     end
     return true
 end
@@ -183,10 +192,7 @@ end
 -- Stops XP when map is changing in the middle of the game
 -- ============================================================================
 function Levelling:MapChange()
-    if Gamerules:GetGameStarted() then
-        -- Induce a draw scenario
-        self:StopXPAllInTeam(8)
-    end
+    self.Levels:SaveLevels()
 end
 
 -- ============================================================================
@@ -206,7 +212,7 @@ end
 -- Levelling:StopXP
 -- Stops accruing XP for the player, calculate and award XP
 -- ============================================================================
-function Levelling:StopXP( Player, Victory )
+function Levelling:StopXP( Player, GameState )
     local Settings = self.Settings
     local FormulaPlayer = Settings.Player.XPFormula
     local FormulaCommander = Settings.Commander.XPFormula
@@ -235,6 +241,13 @@ function Levelling:StopXP( Player, Victory )
         math.Round(Player:GetCommanderTime()/60,0),0)
 
     -- Apply Multipliers
+    local Victory = false
+    if GameState == 6 and Player:GetTeamNumber() == 1 then
+        Victory = true
+    elseif GameState == 7 and Player:GetTeamNumber() == 2 then
+        Victory = true
+    end
+
     if Victory then
         PlayerXPAwarded = math.Round(PlayerXPAwarded
             * FormulaPlayer.Formula.Multipliers.Victory,0)
@@ -255,54 +268,33 @@ function Levelling:StopXP( Player, Victory )
     self:UpdateLevel( Player, self.Levels:GetPlayerXP( Player ), false)
     self:UpdateLevel( Player, self.Levels:GetCommanderXP( Player ), true)
 
-    self.Levels:SaveLevels()
-
     return true
 
 end
 
 -- ============================================================================
--- Levelling:StartXPAllInTeam
+-- Levelling:StartAllXP
 -- Starts accruing XP for the player for all players in playing teams
 -- ============================================================================
-function Levelling:StartXPAllInTeam()
-    local team1Players = GetGamerules():GetTeam1():GetPlayers()
-    local team2Players = GetGamerules():GetTeam2():GetPlayers()
+function Levelling:StartAllXP()
+    local AllPlayers = Shine.GetAllPlayers()
 
-    -- For all players in Marines
-    for _, team1Player in ipairs(team1Players) do
-        self:StartXP(team1Player)
-    end
-
-    -- For all players in Aliens
-    for _, team2Player in ipairs(team2Players) do
-        self:StartXP(team2Player)
+    for _, player in ipairs(AllPlayers) do
+        self:StartXP(player)
     end
 
 end
 
 -- ============================================================================
--- Levelling:StopXPAllInTeam
+-- Levelling:StopAllXP
 -- Stops accruing XP for the player for all players in playing teams
 -- ============================================================================
-function Levelling:StopXPAllInTeam(GameState)
-    local team1Players = GetGamerules():GetTeam1():GetPlayers()
-    local team2Players = GetGamerules():GetTeam2():GetPlayers()
-    local MarineVictoryFlag = false
-    local AlienVictoryFlag = false
+function Levelling:StopAllXP(GameState)
+    local AllPlayers = Shine.GetAllPlayers()
 
-    if GameState == 6 then
-        MarineVictoryFlag = true
-    elseif GameState == 7 then
-        AlienVictoryFlag = true
-    end
-
-    for _, team1Player in ipairs(team1Players) do
-        self:StopXP(team1Player, MarineVictoryFlag)
-    end
-
-    for _, team2Player in ipairs(team2Players) do
-        self:StopXP(team2Player, AlienVictoryFlag)
+    for _, player in ipairs(AllPlayers) do
+        self:StopXP(player, GameState)
+        self.Levels:SaveLevels()
     end
 end
 
@@ -327,11 +319,6 @@ function Levelling:UpdateLevel( Player, CurrentXP, Commander)
         PreviousLevel = self.Levels:GetPlayerLevel( Player )
     end
 
-    -- If player is already at max level
-    if PreviousLevel == Settings.NextLevelFormula.MaximumLevel then
-        return nil
-    end
-
     -- Determine the player's new level
     local NewLevel = self:GetCorrectLevel(
         Settings.NextLevelFormula.Formula,
@@ -349,7 +336,7 @@ function Levelling:UpdateLevel( Player, CurrentXP, Commander)
                 CustomOrder[NewLevel], Settings.Badges.BadgeRow)
                 self.Badges:SavePlayerBadges()
             else
-                error("ShineXP sc_playerleveling.lua: Custom Level " ..
+                Shine:Print("ShineXP sc_playerleveling.lua: Custom Level " ..
                     "Badges has no badges specified for level " .. NewLevel ..
                     ", check your config file!")
                 return false
@@ -435,7 +422,7 @@ function Levelling:GetCorrectLevel( CustomFormula, CurrentXP
 
     -- Check if the formula is a valid mathematical construct
     if not FormulaFunction() then
-        error("ShineCredits self.Levels:GetCorrectLevel - Formula provided is " ..
+        Shine:Print("ShineCredits self.Levels:GetCorrectLevel - Formula provided is " ..
         "not valid.")
     end
 
@@ -445,7 +432,7 @@ function Levelling:GetCorrectLevel( CustomFormula, CurrentXP
         --      Decrease player's Level by 1 until player's XP is
         --      equivalent to the required amount
         while (CurrentXP < FormulaFunction())
-        and CurrentLevel ~= MaxLevel do
+        and CurrentLevel ~= 0 do
             CurrentLevel = CurrentLevel - 1
             LoopFormula = CustomFormula:gsub("x", CurrentLevel)
             FormulaFunction = loadstring(LoopFormula)
@@ -454,12 +441,15 @@ function Levelling:GetCorrectLevel( CustomFormula, CurrentXP
         -- When player's total XP is more than Level's required XP:
         --      Increase player's Level by 1 until player's XP is
         --      equivalent to the required amount
-        while (CurrentXP > FormulaFunction() )
+
+        while (CurrentXP >= FormulaFunction() )
         and CurrentLevel ~= MaxLevel do
             CurrentLevel = CurrentLevel + 1
-            LoopFormula = CustomFormula:gsub("x", CurrentLevel)
+            LoopFormula = CustomFormula:gsub("x", CurrentLevel )
             FormulaFunction = loadstring(LoopFormula)
         end
+
+        CurrentLevel = CurrentLevel - 1
     end
     return CurrentLevel
 end
@@ -534,9 +524,13 @@ function Levelling:CreateLevellingCommands(Plugin)
             Shine.GetClientInfo( Client ), "[Shine Credits]")
 
         self.Notifications:Notify(LocalPlayer,"Level: " ..
-            "Player > " .. Summary.PlayerLevel .. ", Commander > "
-            .. Summary.CommanderLevel
-            ,false)
+        "Player > " ..
+        Summary.PlayerLevel ..
+        " (" .. Summary.PlayerXP .. ")" ..
+        ", Commander > " ..
+        Summary.CommanderLevel ..
+        " (" .. Summary.CommanderXP .. ")",
+        false)
 
         self.Notifications:Notify(LocalPlayer,"XP to next level: " ..
         "Player > " .. PlayerNextLevelFunction() - Summary.PlayerXP ..

@@ -56,19 +56,19 @@ function BadgeRedemptions:CheckConfig(CreditsAwardingConfig)
 
     --- Check Dependencies
     if self.Credits:GetIsEnabled() == false then
-        error("ShineCredits BadgeRedemptions:CheckConfig() - Error in config, " ..
+        Shine:Print("ShineCredits BadgeRedemptions:CheckConfig() - Error in config, " ..
             "Subsystem requires Credits model to be enabled.")
         CheckFlag = false
     end
 
     if self.Badges:GetIsEnabled() == false then
-        error("ShineCredits BadgeRedemptions:CheckConfig() - Error in config, " ..
+        Shine:Print("ShineCredits BadgeRedemptions:CheckConfig() - Error in config, " ..
             "Subsystem requires Badges model to be enabled.")
         CheckFlag = false
     end
 
     if self.BadgesMenu:GetIsEnabled() == false then
-        error("ShineCredits BadgeRedemptions:CheckConfig() - Error in config, " ..
+        Shine:Print("ShineCredits BadgeRedemptions:CheckConfig() - Error in config, " ..
             "Subsystem requires BadgesMenu model to be enabled.")
         CheckFlag = false
     end

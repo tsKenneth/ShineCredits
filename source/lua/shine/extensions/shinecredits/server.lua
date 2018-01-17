@@ -36,7 +36,7 @@ local Levelling = require("shine/extensions/shinecredits/controller/levelling")
 local BadgeRedemptions = require("shine/extensions/shinecredits/controller/badgeredemptions")
 --local SprayRedemptions = require("shine/extensions/shinecredits/controller/sprayredemptions")
 
-Plugin.Version = "2.8"
+Plugin.Version = "2.10"
 Plugin.PrintName = "Shine Credits"
 
 Plugin.HasConfig = true
@@ -192,7 +192,7 @@ Plugin.DefaultConfig = {
             },
             NextLevelFormula = {
                 MaximumLevel = 55,
-                Formula = "x^2"
+                Formula = "(30 * (x^2) - (30 * x))+300"
             },
             Badges = {
                 Enabled = true,
@@ -224,7 +224,7 @@ Plugin.DefaultConfig = {
             },
             NextLevelFormula = {
                 MaximumLevel = 5,
-                Formula = "x^2"
+                Formula = "(1500 * (x^2) - (1500 * x))+300"
             },
             Badges = {
                 Enabled = true,
@@ -262,6 +262,7 @@ Plugin.CheckConfigTypes = true
 
 function Plugin:Initialise()
     self:LoadConfig()
+    self:SaveConfig()
 
     -- Initialise Utilities
     self:InitialiseUtility()

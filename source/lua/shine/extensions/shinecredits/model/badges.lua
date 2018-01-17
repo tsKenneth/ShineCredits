@@ -55,7 +55,7 @@ function Badges:InitPlayer( Player )
         if Result then
             return true
         else
-            error("ShineCredits Badges:InitPlayer() - Error, " ..
+            Shine:Print("ShineCredits Badges:InitPlayer() - Error, " ..
                 "failed to create a new user")
             return false
         end
@@ -174,7 +174,7 @@ function Badges:AddBadge( Player , NewBadge, BadgeRow )
                     NewBadge)
                 return true
             else
-                error("ShineCredits Badges:AddBadge() - Error, " ..
+                Shine:Print("ShineCredits Badges:AddBadge() - Error, " ..
                     "attempting to insert a badge into a badgerow that " ..
                     "doesn't exist or beyond the max number of badgerows.")
                 return false
@@ -187,7 +187,7 @@ function Badges:AddBadge( Player , NewBadge, BadgeRow )
                         NewBadge)
                     return true
                 else
-                    error("ShineCredits Badges:AddBadge() - Error, " ..
+                    Shine:Print("ShineCredits Badges:AddBadge() - Error, " ..
                         "attempting to insert badge into a row beyond " ..
                         "the maximum number of badge rows.")
                     return false
@@ -195,7 +195,7 @@ function Badges:AddBadge( Player , NewBadge, BadgeRow )
             end
         end
     else
-        error("ShineCredits Badges:AddBadge() - Error, " ..
+        Shine:Print("ShineCredits Badges:AddBadge() - Error, " ..
             "badges field does not exist. Check config.")
         return false
     end
@@ -242,8 +242,9 @@ function Badges:RemoveBadge( Player , OldBadge, BadgeRow)
             return true
         end
     else
-        error("ShineCredits Badges:RemoveBadge() - Error, " ..
-            "badges field does not exist. Check config.")
+        Shine:Print("ShineCredits Badges:RemoveBadge() - Error, " ..
+            "badges field does not exist for player " .. SteamID ..
+            ". Check config.")
         return false
     end
 

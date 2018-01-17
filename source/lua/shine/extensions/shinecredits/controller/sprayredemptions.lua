@@ -56,19 +56,19 @@ function SprayRedemptions:CheckConfig(CreditsAwardingConfig)
 
     --- Check Dependencies
     if self.Credits:GetIsEnabled() == false then
-        error("ShineCredits SprayRedemptions:CheckConfig() - Error in config, " ..
+        Shine:Print("ShineCredits SprayRedemptions:CheckConfig() - Error in config, " ..
             "Subsystem requires Credits model to be enabled.")
         CheckFlag = false
     end
 
     if self.SpraysMenu:GetIsEnabled() == false then
-        error("ShineCredits SprayRedemptions:CheckConfig() - Error in config, " ..
+        Shine:Print("ShineCredits SprayRedemptions:CheckConfig() - Error in config, " ..
             "Subsystem requires SpraysMenu model to be enabled.")
         CheckFlag = false
     end
 
     if self.Sprays:GetIsEnabled() == false then
-        error("ShineCredits SprayRedemptions:CheckConfig() - Error in config, " ..
+        Shine:Print("ShineCredits SprayRedemptions:CheckConfig() - Error in config, " ..
             "Subsystem requires SpraysMenu model to be enabled.")
         CheckFlag = false
     end

@@ -115,7 +115,7 @@ Plugin.DefaultConfig = {
             },
             Commands = {
                 RedeemBadge = {Console = "sc_redeembadge", Chat="redeembadge"},
-                ViewBadges = {Console = "sc_viewbadge", Chat="viewbadge"},
+                ViewBadges = {Console = "sc_viewbadges", Chat="viewbadges"},
                 AddBadge = {Console = "sc_addbadge", Chat="addbadge"},
                 RemoveBadge = {Console = "sc_removebadge", Chat="removebadge"}
             }

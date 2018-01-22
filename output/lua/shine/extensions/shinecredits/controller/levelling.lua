@@ -228,17 +228,23 @@ function Levelling:StopXP( Player, GameState )
     end
 
     -- Calculate Player XP
+    local PlayerPlaytime = math.Round(Player:GetPlayTime()/60,0) or 0
+    local CommanderPlaytime = math.Round(Player:GetCommanderTime()/60,0) or 0
+    local PlayerScore = Player:GetScore() or 0
+    local PlayerKills = Player:GetKills() or 0
+    local PlayerAssists = Player:GetAssistKills() or 0
+
     PlayerXPAwarded =
     math.Round(FormulaPlayer.Formula.Time.XPPerMinute *
-        math.Round(Player:GetPlayTime()/60,0),0) +
-    math.Round(FormulaPlayer.Formula.Score.XPPerScore * Player:GetScore(),0) +
-    math.Round(FormulaPlayer.Formula.Score.XPPerKill * Player:GetKills(),0) +
-    math.Round(FormulaPlayer.Formula.Score.XPPerAssist * Player:GetAssistKills(),0)
+        PlayerPlaytime,0) +
+    math.Round(FormulaPlayer.Formula.Score.XPPerScore * PlayerScore,0) +
+    math.Round(FormulaPlayer.Formula.Score.XPPerKill * PlayerKills,0) +
+    math.Round(FormulaPlayer.Formula.Score.XPPerAssist * PlayerAssists,0)
 
     -- Calculate Commander XP
     CommanderXPAwarded =
     math.Round(FormulaCommander.Formula.Time.XPPerMinute *
-        math.Round(Player:GetCommanderTime()/60,0),0)
+        CommanderPlaytime,0)
 
     -- Apply Multipliers
     local Victory = false

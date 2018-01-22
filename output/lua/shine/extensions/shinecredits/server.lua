@@ -254,6 +254,7 @@ Plugin.DefaultConfig = {
 
 Plugin.CheckConfig = true
 Plugin.CheckConfigTypes = true
+Plugin.CheckConfigRecursively = true
 
 -- ============================================================================
 -- Levelling:Initialise

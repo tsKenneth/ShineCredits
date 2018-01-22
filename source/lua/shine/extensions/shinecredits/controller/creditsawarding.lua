@@ -167,14 +167,20 @@ function CreditsAwarding:StopCredits( Player, GameState )
     end
 
     -- Calculate Player self.Credits
+    local PlayerPlaytime = math.Round(Player:GetPlayTime()/60,0) or 0
+    local CommanderPlaytime = math.Round(Player:GetCommanderTime()/60,0) or 0
+    local PlayerScore = Player:GetScore() or 0
+    local PlayerKills = Player:GetKills() or 0
+    local PlayerAssists = Player:GetAssistKills() or 0
+
     PlayerCreditsAwarded =
     math.Round(FormulaPlayer.Formula.Time.CreditsPerMinute *
-        math.Round(Player:GetPlayTime()/60,0),0) +
+        PlayerPlaytime,0) +
     math.Round(FormulaPlayer.Formula.Time.CommanderBonusCreditsPerMinute *
-        math.Round(Player:GetCommanderTime()/60,0),0) +
-    math.Round(FormulaPlayer.Formula.Score.CreditsPerScore * Player:GetScore(),0) +
-    math.Round(FormulaPlayer.Formula.Score.CreditsPerKill * Player:GetKills(),0) +
-    math.Round(FormulaPlayer.Formula.Score.CreditsPerAssist * Player:GetAssistKills(),0)
+        CommanderPlaytime,0) +
+    math.Round(FormulaPlayer.Formula.Score.CreditsPerScore * PlayerScore,0) +
+    math.Round(FormulaPlayer.Formula.Score.CreditsPerKill * PlayerKills,0) +
+    math.Round(FormulaPlayer.Formula.Score.CreditsPerAssist * PlayerAssists,0)
 
     -- Apply Multipliers
     local Victory = false

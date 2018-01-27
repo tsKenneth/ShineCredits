@@ -298,6 +298,10 @@ end
 function Levelling:StopAllXP(GameState)
     local AllPlayers = Shine.GetAllPlayers()
 
+    if #AllPlayers < self.Settings.MinPlayers then
+        return false
+    end
+
     for _, player in ipairs(AllPlayers) do
         self:StopXP(player, GameState)
         self.Levels:SaveLevels()

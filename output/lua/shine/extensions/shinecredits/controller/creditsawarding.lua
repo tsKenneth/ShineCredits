@@ -232,6 +232,10 @@ end
 function CreditsAwarding:StopAllCredits(GameState)
     local AllPlayers = Shine.GetAllPlayers()
 
+    if #AllPlayers < self.Settings.MinPlayers then
+        return false
+    end
+
     for _, player in ipairs(AllPlayers) do
         self:StopCredits(player, GameState)
         self.Credits:SaveCredits()

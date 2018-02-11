@@ -33,6 +33,7 @@ function BadgeRedemptions:Initialise(BadgeRedemptionsConfig,
         self.Credits = Credits
         self.Badges = Badges
         self.BadgesMenu = BadgesMenu
+        self.Plugin = Plugin
 
         if self.Settings.ConfigDebug and not self:CheckConfig(self.Settings) then
             self.Settings.Enabled = false
@@ -129,6 +130,8 @@ function BadgeRedemptions:RedeemBadge( Player, NewBadge )
     local Settings = self.Settings
     -- Checks if player already owns the badge
     if self.Badges:GetIfPlayerHasBadge( Player, NewBadge ) then
+        self.Plugin:SendNetworkMessage( Player:GetClient(), "BadgeRedeemResult",{
+            Badge = NewBadge, Result = RedemptionSuccess}, false)
         return false
     end
 
@@ -141,19 +144,24 @@ function BadgeRedemptions:RedeemBadge( Player, NewBadge )
         end
         self.Credits:SaveCredits()
         self.Badges:SavePlayerBadges()
+
+        -- Send Network Message
+        self.Plugin:SendNetworkMessage( Player:GetClient(), "BadgeRedeemResult",{
+            Badge = NewBadge, Result = RedemptionSuccess}, true)
         return true
     else
+        self.Plugin:SendNetworkMessage( Player:GetClient(), "BadgeRedeemResult",{
+            Badge = NewBadge, Result = RedemptionSuccess}, false)
         return false
     end
 end
 
-
 -- ============================================================================
 -- Commands:
--- Navigate the Badges Menu System
+-- Navigate the Badges Menu System via the chat or console
 -- ============================================================================
 
-function BadgeRedemptions:CreateMenuCommands(Plugin)
+function BadgeRedemptions:CreateMenuCommands(LocalPlugin)
     local Settings = self.Settings
     local Commands = Settings.Commands
 
@@ -180,7 +188,7 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
         self.Notifications:Notify(LocalPlayer, ReturnMessage)
     end
 
-    local RedeemBadgeCommand = Plugin:BindCommand( Commands.RedeemBadge.Console,
+    local RedeemBadgeCommand = LocalPlugin:BindCommand( Commands.RedeemBadge.Console,
         Commands.RedeemBadge.Chat, RedeemBadge,true, true )
     RedeemBadgeCommand:AddParam{ Type = "string", Help = "Badge Name: String" }
     RedeemBadgeCommand:Help( "Redeems the badge with the name specified" )
@@ -189,7 +197,7 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
     -- ====== View Badges ======
     local function ViewBadges( Client )
         local LocalPlayer = Client:GetControllingPlayer()
-        local LocalBadgesMenu = self.BadgesMenu:GetAllInfo()
+        local LocalBadgesMenu = self.BadgesMenu:GetMenu()
         self.Notifications:Notify(LocalPlayer,string.format("%s %s %s",
             "[Name]", "Description -", "Cost"))
 
@@ -203,7 +211,7 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
 
     end
 
-    local ViewItemMenuCommand = Plugin:BindCommand( Commands.ViewBadges.Console,
+    local ViewItemMenuCommand = LocalPlugin:BindCommand( Commands.ViewBadges.Console,
         Commands.ViewBadges.Chat, ViewBadges ,true, true )
     ViewItemMenuCommand:Help( "View badges redeemable with credits." )
 
@@ -229,7 +237,7 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
         self.Notifications:Notify(LocalPlayer, ReturnMessage)
     end
 
-	local AddBadgeCommand = Plugin:BindCommand( Commands.AddBadge.Console,
+	local AddBadgeCommand = LocalPlugin:BindCommand( Commands.AddBadge.Console,
         Commands.AddBadge.Chat, AddBadge )
     AddBadgeCommand:AddParam{ Type = "string", Help = "Badge Name:String" }
     AddBadgeCommand:AddParam{ Type = "string", Help = "Description:String" }
@@ -253,10 +261,11 @@ function BadgeRedemptions:CreateMenuCommands(Plugin)
         self.Notifications:Notify(LocalPlayer,ReturnMessage)
     end
 
-    local RemoveBadgeCommand = Plugin:BindCommand( Commands.RemoveBadge.Console,
+    local RemoveBadgeCommand = LocalPlugin:BindCommand( Commands.RemoveBadge.Console,
         Commands.RemoveBadge.Chat, RemoveBadge )
     RemoveBadgeCommand:AddParam{ Type = "string", Help = "Badge Name:String" }
 	RemoveBadgeCommand:Help( "Removes an Badge from the menu with the badge name specified." )
+
 end
 
 return BadgeRedemptions

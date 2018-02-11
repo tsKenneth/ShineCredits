@@ -16,6 +16,8 @@
 local SprayRedemptions = { _version = "0.1.0" }
 
 SprayRedemptions.RedemptionsFile = {}
+SprayRedemptions.SprayCooldown = {}
+
 
 -- ============================================================================
 -- SprayRedemptions:Initialise
@@ -33,6 +35,7 @@ function SprayRedemptions:Initialise(SprayRedemptionsConfig,
         self.Credits = Credits
         self.SpraysMenu = SpraysMenu
         self.Sprays = Sprays
+        self.Plugin = Plugin
 
         if self.Settings.ConfigDebug and not self:CheckConfig(self.Settings) then
             self.Settings.Enabled = false
@@ -104,7 +107,6 @@ end
 -- ============================================================================
 
 function SprayRedemptions:RedeemSpray( Player, NewSpray )
-    local Settings = self.Settings
     -- Checks if player already owns the spray
     if self.Sprays:GetIfPlayerHasSpray( Player, NewSpray ) then
         return false
@@ -114,9 +116,8 @@ function SprayRedemptions:RedeemSpray( Player, NewSpray )
     if self.Credits:SpendPlayerCredits(Player ,
         self.SpraysMenu:GetInfo(NewSpray).Cost) then
 
-        for _,row in ipairs(Settings.SprayRows) do
-            self.Sprays:AddSpray(Player, NewSpray, row)
-        end
+        self.Sprays:AddSpray(Player, NewSpray)
+
         self.Credits:SaveCredits()
         self.Sprays:SavePlayerSprays()
         return true
@@ -129,7 +130,77 @@ end
 -- SprayRedemptions:EquipSpray
 -- Equip a redeemed spray
 -- ============================================================================
-function SprayRedemptions:EquipSpray()
+function SprayRedemptions:EquipSpray(Player, NewSpray)
+    return self.Sprays:EquipSpray(Player, NewSpray)
+end
+
+-- ============================================================================
+-- SprayRedemptions:PrintSpray
+-- Print the equipped spray onto the surface that player is facing
+-- ============================================================================
+function SprayRedemptions:PrintSpray(player)
+    local origin = player:GetOrigin()
+    local maxSprayDistance = self.Settings.MaxSprayDistance or 4
+
+    -- Spam protection
+    local SteamID = tostring(player:GetSteamId())
+    if (self.SprayCooldown[SteamID] and Shared.GetTime() -
+        self.SprayCooldown[SteamID] < self.Settings.SprayCooldown) then
+        return false
+    end
+
+    -- Get player's equipped spray
+    local EquippedSpray = self.Sprays:GetEquippedSpray(Player)
+
+    local startPoint = player:GetEyePos()
+    local endPoint = startPoint + player:GetViewCoords().zAxis * 100
+    local trace = Shared.TraceRay(startPoint, endPoint, CollisionRep.Default,
+        PhysicsMask.Bullets, EntityFilterAll())
+
+    if trace.fraction ~= 1 then
+        local direction = startPoint - trace.endPoint
+        local distance = direction:GetLength()
+        direction:Normalize()
+        if distance > maxSprayDistance then return end
+
+        local coords = Coords.GetIdentity()
+        if trace.normal:CrossProduct(Vector(0,1,0)):GetLength() < 0.35 then
+            -- We are looking at the floor, a slope or the ceiling, so rotate decal to face us
+            local isFacingUp = trace.normal:DotProduct(Vector(0,1,0)) < 0
+            coords.origin = trace.endPoint - 0.5 * trace.normal
+            coords.yAxis = trace.normal
+
+            if isFacingUp then
+                coords.xAxis = direction
+            else
+                coords.xAxis = -direction
+            end
+            coords.zAxis = coords.xAxis:CrossProduct(coords.yAxis)
+            coords.xAxis = coords.yAxis:CrossProduct(coords.zAxis)
+        else
+            -- We are looking at a wall, decal is always upright
+            coords.origin = trace.endPoint - 0.5 * direction
+            coords.yAxis = trace.normal
+            coords.zAxis = coords.yAxis:GetPerpendicular()
+            coords.xAxis = coords.yAxis:CrossProduct(coords.zAxis)
+
+        end
+
+        local angles = Angles()
+        angles:BuildFromCoords(coords)
+
+        local nearbyPlayers = GetEntitiesWithinRange("Player", origin, 20)
+        for p = 1, #nearbyPlayers do
+            self.Plugin:SendNetworkMessage( nearbyPlayers[p], "PrintSpray", {
+                originX = coords.origin.x, originY = coords.origin.y,
+                originZ = coords.origin.z,
+                yaw = angles.yaw, pitch = angles.pitch, roll = angles.roll,
+                name = EquippedSpray,
+                lifetime = self.Settings.SprayDuration}, true )
+        end
+
+        self.SprayCooldown[SteamID] = Shared.GetTime()
+    end
 end
 
 
@@ -174,7 +245,7 @@ function SprayRedemptions:CreateMenuCommands(Plugin)
     -- ====== View Sprays ======
     local function ViewSprays( Client )
         local LocalPlayer = Client:GetControllingPlayer()
-        local LocalSpraysMenu = self.SpraysMenu:GetAllInfo()
+        local LocalSpraysMenu = self.SpraysMenu:GetMenu()
         self.Notifications:Notify(LocalPlayer,string.format("%s %s %s",
             "[Name]", "Description -", "Cost"))
 
@@ -208,7 +279,7 @@ function SprayRedemptions:CreateMenuCommands(Plugin)
                 .. SprayNameArg .. " had been added to menu."
         else
             ReturnMessage = "Spray " ..
-                SprayNameArg .. " was not added;the spray might be reserved"
+                SprayNameArg .. " was not added."
         end
 
         self.Notifications:Notify(LocalPlayer, ReturnMessage)
@@ -242,6 +313,37 @@ function SprayRedemptions:CreateMenuCommands(Plugin)
         Commands.RemoveSpray.Chat, RemoveSpray )
     RemoveSprayCommand:AddParam{ Type = "string", Help = "Spray Name:String" }
 	RemoveSprayCommand:Help( "Removes an Spray from the menu with the spray name specified." )
+
+    -- ====== Equip Sprays ======
+    local function EquipSpray(Client, SprayNameArg)
+        local LocalPlayer = Client:GetControllingPlayer()
+        local ReturnMessage = ""
+
+        if self.Sprays:EquipSpray(LocalPlayer, SprayNameArg) then
+            ReturnMessage = "Spray "
+                .. SprayNameArg .. " equipped."
+        else
+            ReturnMessage = "Spray "
+                .. SprayNameArg .. " has not been redeemed!"
+        end
+
+        self.Notifications:Notify(LocalPlayer,ReturnMessage)
+    end
+
+    local EquipSprayCommand = Plugin:BindCommand( Commands.EquipSpray.Console,
+        Commands.EquipSpray.Chat, EquipSpray )
+    EquipSprayCommand:AddParam{ Type = "string", Help = "Spray Name:String" }
+	EquipSprayCommand:Help( "Equip the specified spray." )
+
+    -- ====== Print Spray ======
+    local function PrintSpray(Client)
+        local LocalPlayer = Client:GetControllingPlayer()
+        self:PrintSpray(LocalPlayer)
+    end
+
+    local PrintSprayCommand = Plugin:BindCommand( Commands.PrintSpray.Console,
+        Commands.PrintSpray.Chat, PrintSpray )
+	PrintSprayCommand:Help( "Use your equipped spray" )
 end
 
 return SprayRedemptions

@@ -52,10 +52,10 @@ end
 -- ----------------------------------------------------------------------------
 -- ============================================================================
 -- ============================================================================
--- BadgesMenu:GetAllInfo
+-- BadgesMenu:GetMenu
 -- Returns the information on all badges in the badges menu
 -- ============================================================================
-function BadgesMenu:GetAllInfo()
+function BadgesMenu:GetMenu()
     return self.BadgesMenu
 end
 

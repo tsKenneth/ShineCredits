@@ -1,7 +1,7 @@
 -- ============================================================================
 --
--- self.Credits Awarding System (Controller)
---      self.Credits are awarded for playing the game on the server. These self.Credits
+-- Credits Awarding System (Controller)
+--      Credits are awarded for playing the game on the server. These self.Credits
 --      can then be used to redeem various comestic items, such as sprays and
 --      skins.
 --
@@ -167,20 +167,14 @@ function CreditsAwarding:StopCredits( Player, GameState )
     end
 
     -- Calculate Player self.Credits
-    local PlayerPlaytime = math.Round(Player:GetPlayTime()/60,0) or 0
-    local CommanderPlaytime = math.Round(Player:GetCommanderTime()/60,0) or 0
-    local PlayerScore = Player:GetScore() or 0
-    local PlayerKills = Player:GetKills() or 0
-    local PlayerAssists = Player:GetAssistKills() or 0
-
     PlayerCreditsAwarded =
     math.Round(FormulaPlayer.Formula.Time.CreditsPerMinute *
-        PlayerPlaytime,0) +
+        math.Round(Player:GetPlayTime()/60,0),0) +
     math.Round(FormulaPlayer.Formula.Time.CommanderBonusCreditsPerMinute *
-        CommanderPlaytime,0) +
-    math.Round(FormulaPlayer.Formula.Score.CreditsPerScore * PlayerScore,0) +
-    math.Round(FormulaPlayer.Formula.Score.CreditsPerKill * PlayerKills,0) +
-    math.Round(FormulaPlayer.Formula.Score.CreditsPerAssist * PlayerAssists,0)
+        math.Round(Player:GetCommanderTime()/60,0),0) +
+    math.Round(FormulaPlayer.Formula.Score.CreditsPerScore * Player:GetScore(),0) +
+    math.Round(FormulaPlayer.Formula.Score.CreditsPerKill * Player:GetKills(),0) +
+    math.Round(FormulaPlayer.Formula.Score.CreditsPerAssist * Player:GetAssistKills(),0)
 
     -- Apply Multipliers
     local Victory = false
@@ -285,7 +279,7 @@ function CreditsAwarding:CreateCreditsCommands(Plugin)
     -- ====== Set Credits ======
     local function SetCredits( Client, Target, Amount )
         local LocalPlayer = Client:GetControllingPlayer()
-        Credits:SetPlayerCredits( Target:GetControllingPlayer())
+        Credits:SetPlayerCredits( Target:GetControllingPlayer(), Amount, Amount)
         Credits:SaveCredits()
         self.Notifications:Notify(LocalPlayer, "Credits Set")
     end
@@ -298,7 +292,7 @@ function CreditsAwarding:CreateCreditsCommands(Plugin)
     -- ====== Add Credits ======
     local function AddCredits( Client, Target, Amount )
         local LocalPlayer = Client:GetControllingPlayer()
-        Credits:AddPlayerCredits( Target:GetControllingPlayer())
+        Credits:AddPlayerCredits( Target:GetControllingPlayer(), Amount, Amount)
         Credits:SaveCredits()
         self.Notifications:Notify(LocalPlayer, "Credits Added")
     end

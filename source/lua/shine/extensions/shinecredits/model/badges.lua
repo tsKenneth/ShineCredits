@@ -51,7 +51,7 @@ function Badges:InitPlayer( Player )
     local Existing, _ = Shine:GetUserData( Target )
 
     if not Existing then
-        Result = Shine:CreateUser( Target, "Pleb")
+        Result = Shine:CreateUser( Target, "Default")
         if Result then
             return true
         else
@@ -121,6 +121,14 @@ end
 -- ============================================================================
 function Badges:GetIsEnabled()
     return self.Settings.Enabled
+end
+
+-- ============================================================================
+-- Badges:GetBadgeFile
+-- Returns the entire badge file
+-- ============================================================================
+function Badges:GetBadgeFile()
+    return self.BadgesFile
 end
 
 -- ============================================================================

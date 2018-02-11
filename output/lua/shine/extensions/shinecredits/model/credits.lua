@@ -49,7 +49,8 @@ function Credits:InitPlayer( Player )
 
     if LocalCreditsFile[SteamID] == nil then
         LocalCreditsFile[SteamID] = {
-            Total = 0, Current = 0
+            Total = self.Settings.StartingAmount,
+                Current = self.Settings.StartingAmount
             }
         self:SaveCredits()
         return true

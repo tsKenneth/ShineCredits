@@ -2,7 +2,7 @@
 --
 -- Shine Credits System
 --
--- Copyright (c) 2015 Kenneth
+-- Copyright (c) 2018 Kenneth
 --
 -- This NS2 Mod is free; you can redistribute it and/or modify it
 -- under the terms of the MIT license. See LICENSE for details.
@@ -22,19 +22,20 @@ local Notifications = require("shine/extensions/shinecredits/utility/notificatio
 local Credits = require("shine/extensions/shinecredits/model/credits")
 local Levels = require("shine/extensions/shinecredits/model/levels")
 local Badges = require("shine/extensions/shinecredits/model/badges")
---local Sprays = require("shine/extensions/shinecredits/model/sprays")
+local Sprays = require("shine/extensions/shinecredits/model/sprays")
 
 -- Models - Menus
 local BadgesMenu = require("shine/extensions/shinecredits/model/badgesmenu")
---local SpraysMenu = require("shine/extensions/shinecredits/model/spraysmenu")
+local SpraysMenu = require("shine/extensions/shinecredits/model/spraysmenu")
 
 -- Controllers
 local CreditsAwarding = require("shine/extensions/shinecredits/controller/creditsawarding")
 local Levelling = require("shine/extensions/shinecredits/controller/levelling")
+local CreditsMenu = require("shine/extensions/shinecredits/controller/creditsmenu")
 
 -- Controllers - Redemptions
 local BadgeRedemptions = require("shine/extensions/shinecredits/controller/badgeredemptions")
---local SprayRedemptions = require("shine/extensions/shinecredits/controller/sprayredemptions")
+local SprayRedemptions = require("shine/extensions/shinecredits/controller/sprayredemptions")
 
 Plugin.Version = "2.10"
 Plugin.PrintName = "Shine Credits"
@@ -56,6 +57,7 @@ Plugin.DefaultConfig = {
         Models = {
             Credits = {
                 Enabled = true,
+                StartingAmount = 50,
                 FileName = "ShineCredits_PlayerCredits.json"
             },
             Levels = {
@@ -123,11 +125,16 @@ Plugin.DefaultConfig = {
         Sprays = {
             Enabled = true,
             ConfigDebug = true,
+            MaxSprayDistance = 4,
+            SprayCooldown = 10,
+            SprayDuration = 10,
             Commands = {
                 RedeemSpray = {Console = "sc_redeemspray", Chat="redeemspray"},
                 ViewSprays = {Console = "sc_viewspray", Chat="viewspray"},
                 AddSpray = {Console = "sc_addspray", Chat="addspray"},
-                RemoveSpray = {Console = "sc_removespray", Chat="removespray"}
+                RemoveSpray = {Console = "sc_removespray", Chat="removespray"},
+                EquipSpray = {Console = "sc_equipspray", Chat="equipspray"},
+                PrintSpray = {Console = "sc_spray", Chat="spray"}
             }
         },
     },
@@ -138,7 +145,6 @@ Plugin.DefaultConfig = {
         Player = {
             Enabled = true,
             CreditsFormula = {
-                NewPlayerBonus = 50,
                 MaximumAwardedPerRound = 300,
                 Formula = {
                     Time = {
@@ -287,8 +293,10 @@ function Plugin:InitialiseModels()
     Credits:Initialise(self.Config.Storage)
     Levels:Initialise(self.Config.Storage)
     Badges:Initialise(self.Config.Storage)
+    Sprays:Initialise(self.Config.Storage)
 
     BadgesMenu:Initialise(self.Config.Storage)
+    SpraysMenu:Initialise(self.Config.Storage)
 end
 
 function Plugin:InitialiseControllers()
@@ -296,12 +304,19 @@ function Plugin:InitialiseControllers()
     Notifications ,Badges, Levels, self)
 
     CreditsAwarding:Initialise(self.Config.CreditsAwarding,
-    Notifications ,Credits, self)
+    Notifications, Credits, self)
 
     BadgeRedemptions:Initialise(self.Config.Redemptions.Badges,
-    Notifications ,Badges, BadgesMenu, Credits, self)
-end
+    Notifications, Badges, BadgesMenu, Credits, self)
 
+    SprayRedemptions:Initialise(self.Config.Redemptions.Sprays,
+    Notifications, Sprays, SpraysMenu, Credits, self)
+
+    CreditsMenu:Initialise(Notifications, {
+        Badges=BadgesMenu,
+        Sprays=SpraysMenu
+        }, self)
+end
 
 -- ============================================================================
 -- ----------------------------------------------------------------------------
@@ -321,6 +336,8 @@ function Plugin:ClientConnect( client )
     Credits:InitPlayer(LocalPlayer)
     Levels:InitPlayer(LocalPlayer)
     Badges:InitPlayer(LocalPlayer)
+    Sprays:InitPlayer(LocalPlayer)
+
 end
 
 

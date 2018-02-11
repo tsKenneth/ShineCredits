@@ -52,10 +52,10 @@ end
 -- ----------------------------------------------------------------------------
 -- ============================================================================
 -- ============================================================================
--- SpraysMenu:GetAllInfo
+-- SpraysMenu:GetMenu
 -- Returns the information on all sprays in the sprays menu
 -- ============================================================================
-function SpraysMenu:GetAllInfo()
+function SpraysMenu:GetMenu()
     return self.SpraysMenu
 end
 

@@ -45,7 +45,7 @@ function Sprays:InitPlayer( Player )
 
     -- Create and maintain data on players' sprays
     if LocalSpraysFile[SteamID] == nil then
-        LocalSpraysFile[SteamID] = {}
+        LocalSpraysFile[SteamID] = {Equipped = " ",Redeemed = {} }
         self:SavePlayerSprays()
     end
 
@@ -87,13 +87,24 @@ function Sprays:GetIfPlayerHasSpray( Player, SprayName )
     local SteamID = tostring(Player:GetSteamId())
 
     if LocalSpraysFile then
-        for k, spray in pairs(LocalSpraysFile[SteamID]) do
+        for k, spray in pairs(LocalSpraysFile[SteamID].Redeemed) do
             if SprayName == spray then
                 return true
             end
         end
     end
     return false
+end
+
+-- ============================================================================
+-- Sprays:GetEquippedSpray
+-- Returns the player's equipped spray
+-- ============================================================================
+function Sprays:GetEquippedSpray( Player)
+    local LocalSpraysFile = self.SpraysFile
+    local SteamID = tostring(Player:GetSteamId())
+
+    return LocalSpraysFile[SteamID].Equipped
 end
 
 -- ============================================================================
@@ -110,7 +121,7 @@ function Sprays:AddSpray( Player , NewSpray)
     local LocalSpraysFile = self.SpraysFile
     local SteamID = tostring(Player:GetSteamId())
 
-    table.insert(LocalSpraysFile[SteamID],NewSpray)
+    table.insert(LocalSpraysFile[SteamID].Redeemed,NewSpray)
 
 end
 
@@ -122,13 +133,31 @@ function Sprays:RemoveSpray( Player , OldSpray)
     local LocalSpraysFile = self.SpraysFile
     local SteamID = tostring(Player:GetSteamId())
 
-    for i,spray in ipairs(LocalSpraysFile[SteamID]) do
+    for i,spray in ipairs(LocalSpraysFile[SteamID].Redeemed) do
         if spray == OldSpray then
-            table.remove(LocalSpraysFile[SteamID],i)
+            table.remove(LocalSpraysFile[SteamID].Redeemed,i)
             return true
         end
     end
     return false
+
+end
+
+-- ============================================================================
+-- Sprays:EquipSpray
+-- Set a spray as the active spray
+-- ============================================================================
+function Sprays:EquipSpray( Player , Spray )
+    local LocalSpraysFile = self.SpraysFile
+    local SteamID = tostring(Player:GetSteamId())
+
+    if self:GetIfPlayerHasSpray( Player, Spray ) then
+        LocalSpraysFile[SteamID].Equipped = Spray
+        return true
+    else
+        return false
+    end
+
 
 end
 

@@ -15,12 +15,18 @@ local SGUI = Shine.GUI
 BadgesTab = {}
 BadgesListData = {}
 BadgesPreviewImages = {}
+CurrentCredits = 0
 
 function BadgesTab.OnInit( Panel, Data )
     PanelLabel = SGUI:Create( "Label", Panel )
     PanelLabel:SetFont( Fonts.kAgencyFB_Small )
     PanelLabel:SetText( "Badges Menu" )
     PanelLabel:SetPos( Vector( 20, 25, 0 ) )
+
+    CreditBalanceLabel = SGUI:Create( "Label", Panel )
+    CreditBalanceLabel:SetFont( Fonts.kAgencyFB_Small )
+    CreditBalanceLabel:SetText( "Available Credits: " .. CurrentCredits)
+    CreditBalanceLabel:SetPos( Vector( 350, 25, 0 ) )
 
     RedemptionResultLabel = SGUI:Create( "Label", Panel )
     RedemptionResultLabel:SetAnchor( "CentreMiddle" )
@@ -83,10 +89,11 @@ function BadgesTab.OnCleanup( Panel )
     BadgesList = nil
     PreviewImage = nil
     RedemptionResultLabel = nil
+    CreditBalanceLabel = nil
     return { ImportantInformation = true }
 end
 
-function BadgesTab.Update( Data )
+function BadgesTab.Update( Data, NewCurrentCredits)
     local BadgesMenu = Data
 
     -- Add new badges to the list
@@ -100,6 +107,13 @@ function BadgesTab.Update( Data )
 			BadgesListData[ID] = nil
 		end
     end
+
+    CurrentCredits = NewCurrentCredits
+end
+
+function BadgesTab.CreditsMessageUpdate( NewCurrentCredits )
+    CurrentCredits = NewCurrentCredits
+    CreditBalanceLabel:SetText( "Available Credits: " .. CurrentCredits)
 end
 
 function BadgesTab.RedeemMessageUpdate( Success )

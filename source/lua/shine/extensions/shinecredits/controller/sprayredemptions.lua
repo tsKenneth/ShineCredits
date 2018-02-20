@@ -120,6 +120,7 @@ function SprayRedemptions:RedeemSpray( Player, NewSpray )
 
         self.Credits:SaveCredits()
         self.Sprays:SavePlayerSprays()
+
         return true
     else
         return false
@@ -131,6 +132,8 @@ end
 -- Equip a redeemed spray
 -- ============================================================================
 function SprayRedemptions:EquipSpray(Player, NewSpray)
+    self.Plugin:SendNetworkMessage( Player:GetClient(), "SprayEquipResult",{
+        Spray = NewSpray, Result = true}, true)
     return self.Sprays:EquipSpray(Player, NewSpray)
 end
 
@@ -150,7 +153,7 @@ function SprayRedemptions:PrintSpray(player)
     end
 
     -- Get player's equipped spray
-    local EquippedSpray = self.Sprays:GetEquippedSpray(Player)
+    local EquippedSpray = self.Sprays:GetEquippedSpray(player)
 
     local startPoint = player:GetEyePos()
     local endPoint = startPoint + player:GetViewCoords().zAxis * 100
@@ -221,16 +224,33 @@ function SprayRedemptions:CreateMenuCommands(Plugin)
         if self.SpraysMenu:GetInfo( SprayNameArg ) then
             if self:RedeemSpray(LocalPlayer,SprayNameArg) then
                 ReturnMessage = "Spray " .. SprayNameArg ..
-                    " succesfully redeemed!" ..
-                    " (Will take effect after map changes)"
+                    " succesfully redeemed!"
+
+                local LocalPlayerCredits = self.Credits:GetPlayerCredits(
+                    LocalPlayer )
+
+                self.Plugin:SendNetworkMessage( Client,
+                    "UpdateCredits",{
+                Current = LocalPlayerCredits.Current,
+                Total = LocalPlayerCredits.Total}, true)
+
+                self.Plugin:SendNetworkMessage( Client,
+                    "SprayRedeemResult",{
+                Spray = NewSpray, Result = true}, true)
             else
                 ReturnMessage = "You already own the spray "..
                     "or you have insufficient credits to redeem the spray ("
                     .. SprayNameArg ..")"
+                self.Plugin:SendNetworkMessage( Client,
+                    "SprayRedeemResult",{
+                Spray = NewSpray, Result = false}, true)
             end
 
         else
             ReturnMessage = "There are no sprays with name " .. SprayNameArg
+            self.Plugin:SendNetworkMessage( Client,
+                "SprayRedeemResult",{
+            Spray = NewSpray, Result = false}, true)
         end
 
         self.Notifications:Notify(LocalPlayer, ReturnMessage)

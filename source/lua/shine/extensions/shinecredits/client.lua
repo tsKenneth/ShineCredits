@@ -29,6 +29,9 @@ if Client then
     function Plugin:ReceiveOpenCreditsMenu( Data )
          CreditsMenu:ReceiveOpenCreditsMenu( Data )
     end
+    function Plugin:ReceiveUpdateCredits( Data )
+         CreditsMenu:ReceiveUpdateCredits( Data )
+    end
 
     -- Badges =================================================================
     function Plugin:ReceiveBadgeData( Data )

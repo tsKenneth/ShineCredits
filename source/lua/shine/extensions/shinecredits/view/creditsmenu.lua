@@ -27,6 +27,7 @@ SGUI:AddMixin( CreditsMenu, "Visibility" )
 
 CreditsMenu.Commands = {}
 CreditsMenu.Tabs = {}
+CreditsMenu.Data = {}
 
 CreditsMenu.Pos = Vector( -325, -325, 0 )
 CreditsMenu.Size = Vector( 700, 700, 0 )
@@ -58,7 +59,17 @@ end
 -- ============================================================================
 
 function CreditsMenu:ReceiveOpenCreditsMenu( Data )
+    self.Data.CurrentCredits = Data.CurrentCredits
+    self.Data.TotalCredits = Data.TotalCredits
     self:SetIsVisible( true, false )
+end
+
+function CreditsMenu:ReceiveUpdateCredits( Data )
+    InfoTab.CreditsMessageUpdate(Data.CurrentCredits)
+    BadgesTab.CreditsMessageUpdate(Data.CurrentCredits)
+    SkinsTab.CreditsMessageUpdate(Data.CurrentCredits)
+    CommandItemsTab.CreditsMessageUpdate(Data.CurrentCredits)
+    SpraysTab.CreditsMessageUpdate(Data.CurrentCredits)
 end
 
 function CreditsMenu:ReceiveBadgeData( Data )
@@ -96,11 +107,8 @@ function CreditsMenu:Create()
 
     Window.OnPreTabChange = function( LocalWindow )
 		if not LocalWindow.ActiveTab then return end
-
 		local Tab = LocalWindow.Tabs[ Window.ActiveTab ]
-
 		if not Tab then return end
-
 		self:OnTabCleanup( Window, Tab.Name )
 	end
 
@@ -261,7 +269,7 @@ end
 
 function CreditsMenu:PopulateTabs( Window )
 	for Name, Data in SortedPairs( self.Tabs ) do
-        Data.Update(CreditsMenuData[Name])
+        Data.Update(CreditsMenuData[Name], self.Data.CurrentCredits)
 		local Tab = Window:AddTab( Name, Data.OnInit )
 		Data.TabObj = Tab
 	end

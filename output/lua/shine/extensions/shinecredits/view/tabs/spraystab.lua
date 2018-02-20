@@ -15,12 +15,18 @@ local SGUI = Shine.GUI
 SpraysTab = {}
 SpraysListData = {}
 SpraysPreviewImages = {}
+CurrentCredits = 0
 
 function SpraysTab.OnInit( Panel, Data )
     PanelLabel = SGUI:Create( "Label", Panel )
     PanelLabel:SetFont( Fonts.kAgencyFB_Small )
     PanelLabel:SetText( "Sprays Menu" )
     PanelLabel:SetPos( Vector( 20, 25, 0 ) )
+
+    CreditBalanceLabel = SGUI:Create( "Label", Panel )
+    CreditBalanceLabel:SetFont( Fonts.kAgencyFB_Small )
+    CreditBalanceLabel:SetText( "Available Credits: " .. CurrentCredits)
+    CreditBalanceLabel:SetPos( Vector( 350, 25, 0 ) )
 
     RedemptionResultLabel = SGUI:Create( "Label", Panel )
     RedemptionResultLabel:SetAnchor( "CentreMiddle" )
@@ -98,10 +104,11 @@ function SpraysTab.OnCleanup( Panel )
     EquipButton = nil
     SpraysList = nil
     RedemptionResultLabel = nil
+    CreditBalanceLabel = nil
     return { ImportantInformation = true }
 end
 
-function SpraysTab.Update( Data )
+function SpraysTab.Update( Data, NewCurrentCredits )
     local SpraysMenu = Data
 
     -- Add new sprays to the list
@@ -115,6 +122,13 @@ function SpraysTab.Update( Data )
 			SpraysListData[ID] = nil
 		end
     end
+
+    CurrentCredits = NewCurrentCredits
+end
+
+function SpraysTab.CreditsMessageUpdate( NewCurrentCredits )
+    CurrentCredits = NewCurrentCredits
+    CreditBalanceLabel:SetText( "Available Credits: " .. NewCurrentCredits)
 end
 
 function SpraysTab.RedeemMessageUpdate( Success )

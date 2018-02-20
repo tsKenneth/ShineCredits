@@ -19,8 +19,9 @@ Badges.BadgesFile = {}
 -- ----------------------------------------------------------------------------
 -- ============================================================================
 
-function Badges:Initialise(StorageConfig)
+function Badges:Initialise(StorageConfig, ServerSettings)
     self.Settings = StorageConfig.Models.Badges
+    self.ServerSettings = ServerSettings
 
     if self.Settings and self.Settings.Enabled then
         self.Settings.FilePath = StorageConfig.Files.Directory ..
@@ -42,6 +43,7 @@ function Badges:InitPlayer( Player )
     -- Initialise local copy of global files
     local LocalBadgesFile = self.BadgesFile
     local Settings = self.Settings
+    local ServerSettings = self.ServerSettings
     local SteamID = tostring(Player:GetSteamId())
     local SaveFlag = false
     local Result = false
@@ -51,7 +53,7 @@ function Badges:InitPlayer( Player )
     local Existing, _ = Shine:GetUserData( Target )
 
     if not Existing then
-        Result = Shine:CreateUser( Target, "Default")
+        Result = Shine:CreateUser( Target, ServerSettings.DefaultGroup)
         if Result then
             return true
         else

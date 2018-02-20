@@ -130,8 +130,6 @@ function BadgeRedemptions:RedeemBadge( Player, NewBadge )
     local Settings = self.Settings
     -- Checks if player already owns the badge
     if self.Badges:GetIfPlayerHasBadge( Player, NewBadge ) then
-        self.Plugin:SendNetworkMessage( Player:GetClient(), "BadgeRedeemResult",{
-            Badge = NewBadge, Result = RedemptionSuccess}, false)
         return false
     end
 
@@ -144,14 +142,8 @@ function BadgeRedemptions:RedeemBadge( Player, NewBadge )
         end
         self.Credits:SaveCredits()
         self.Badges:SavePlayerBadges()
-
-        -- Send Network Message
-        self.Plugin:SendNetworkMessage( Player:GetClient(), "BadgeRedeemResult",{
-            Badge = NewBadge, Result = RedemptionSuccess}, true)
         return true
     else
-        self.Plugin:SendNetworkMessage( Player:GetClient(), "BadgeRedeemResult",{
-            Badge = NewBadge, Result = RedemptionSuccess}, false)
         return false
     end
 end
@@ -168,6 +160,7 @@ function BadgeRedemptions:CreateMenuCommands(LocalPlugin)
     -- ====== Redeem Badges ======
     local function RedeemBadge( Client , BadgeNameArg)
         local LocalPlayer = Client:GetControllingPlayer()
+        local LocalPlayerCredits = 0
         local ReturnMessage = ""
 
         if self.BadgesMenu:GetInfo( BadgeNameArg ) then
@@ -175,14 +168,33 @@ function BadgeRedemptions:CreateMenuCommands(LocalPlugin)
                 ReturnMessage = "Badge " .. BadgeNameArg ..
                     " succesfully redeemed!" ..
                     " (Will take effect after map changes)"
+
+                LocalPlayerCredits = self.Credits:GetPlayerCredits(
+                    LocalPlayer )
+
+                self.Plugin:SendNetworkMessage( Client,
+                    "UpdateCredits",{
+                CurrentCredits = LocalPlayerCredits.Current,
+                TotalCredits = LocalPlayerCredits.Total}, true)
+
+                self.Plugin:SendNetworkMessage( Client,
+                    "BadgeRedeemResult",{
+                Badge = NewBadge, Result = true}, true)
             else
                 ReturnMessage = "You already own the badge "..
                     "or you have insufficient credits to redeem the badge ("
                     .. BadgeNameArg ..")"
+
+                self.Plugin:SendNetworkMessage( Client,
+                "BadgeRedeemResult",{
+                Badge = NewBadge, Result = false}, false)
             end
 
         else
             ReturnMessage = "There are no badges with name " .. BadgeNameArg
+            self.Plugin:SendNetworkMessage( Client,
+            "BadgeRedeemResult",{
+            Badge = NewBadge, Result = false}, false)
         end
 
         self.Notifications:Notify(LocalPlayer, ReturnMessage)

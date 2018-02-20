@@ -23,6 +23,10 @@ local Plugin = {}
 -- ============================================================================
 
 function Plugin:SetupDataTable()
+    -- ========================================================================
+    -- = General =
+    -- ========================================================================
+    -- Sprays =================================================================
     self:AddNetworkMessage( "PrintSpray", {
         originX = "float",
         originY = "float",
@@ -33,6 +37,21 @@ function Plugin:SetupDataTable()
         name = "string (60)",
         lifetime = "float"
     }, "Client" )
+
+    -- ========================================================================
+    -- = Menu =
+    -- ========================================================================
+    -- General ================================================================
+    self:AddNetworkMessage( "OpenCreditsMenu", {
+        CurrentCredits = "integer (0 to 99999)",
+        TotalCredits = "integer (0 to 99999)"
+    }, "Client" )
+
+    self:AddNetworkMessage( "UpdateCredits", {
+        CurrentCredits = "integer (0 to 99999)",
+        TotalCredits = "integer (0 to 99999)"
+    }, "Client" )
+
 
     -- Badges =================================================================
     self:AddNetworkMessage( "BadgeData", {
@@ -64,7 +83,7 @@ function Plugin:SetupDataTable()
     -- Command Items ==========================================================
     -- Sprays =================================================================
 
-    self:AddNetworkMessage( "OpenCreditsMenu", {}, "Client" )
+
 end
 
 Shine:RegisterExtension("shinecredits", Plugin)

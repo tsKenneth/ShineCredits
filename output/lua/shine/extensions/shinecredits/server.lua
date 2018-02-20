@@ -37,13 +37,16 @@ local CreditsMenu = require("shine/extensions/shinecredits/controller/creditsmen
 local BadgeRedemptions = require("shine/extensions/shinecredits/controller/badgeredemptions")
 local SprayRedemptions = require("shine/extensions/shinecredits/controller/sprayredemptions")
 
-Plugin.Version = "2.10"
+Plugin.Version = "2.15"
 Plugin.PrintName = "Shine Credits"
 
 Plugin.HasConfig = true
 Plugin.ConfigName = "ShineCredits.json"
 
 Plugin.DefaultConfig = {
+    ServerSettings = {
+        DefaultGroup = "DefaultGroup"
+    },
     Storage = {
         Mode = "Files",
         Files = {
@@ -95,7 +98,7 @@ Plugin.DefaultConfig = {
             Sender = {
                 DefaultName = "[Shine Credits]",
                 NameRGB = {255,20,30}
-            }
+            },
         }
     },
     Redemptions = {
@@ -292,7 +295,7 @@ end
 function Plugin:InitialiseModels()
     Credits:Initialise(self.Config.Storage)
     Levels:Initialise(self.Config.Storage)
-    Badges:Initialise(self.Config.Storage)
+    Badges:Initialise(self.Config.Storage, self.Config.ServerSettings)
     Sprays:Initialise(self.Config.Storage)
 
     BadgesMenu:Initialise(self.Config.Storage)
@@ -315,7 +318,8 @@ function Plugin:InitialiseControllers()
     CreditsMenu:Initialise(Notifications, {
         Badges=BadgesMenu,
         Sprays=SpraysMenu
-        }, self)
+    },
+    Credits, self)
 end
 
 -- ============================================================================

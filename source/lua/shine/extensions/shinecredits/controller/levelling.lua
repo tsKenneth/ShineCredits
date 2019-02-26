@@ -80,22 +80,22 @@ function Levelling:CheckConfig(LevellingConfig)
                 "Player.NextLevelFormula.Formula must contain " ..
                 "a letter x to signify level as a variable")
             CheckFlag = false
-        end
 
     -- Checks if Player badges configs are correct
-    elseif LevellingConfig.Player.Badges.Enabled then
-        if #LevellingConfig.Player.Badges.CustomBadgesOrder <
-        LevellingConfig.Player.NextLevelFormula.MaximumLevel then
-            Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
-            "Player.Badges.CustomBadgesOrder must have more" ..
-            "elements (badges) than the number of self.Levels")
-            CheckFlag = false
-        elseif LevellingConfig.Player.Badges.BadgesOrder.BadgeRow
-        < 1 then
-            Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
-            "Commander.Badges.BadgesOrder.LocalBadgeRow must be " ..
-            "greater than 0")
-            CheckFlag = false
+        elseif LevellingConfig.Player.Badges.Enabled then
+            if #LevellingConfig.Player.Badges.CustomBadgesOrder <
+            LevellingConfig.Player.NextLevelFormula.MaximumLevel then
+                Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+                "Player.Badges.CustomBadgesOrder must have more" ..
+                "elements (badges) than the number of self.Levels")
+                CheckFlag = false
+            elseif LevellingConfig.Player.Badges.BadgesOrder.BadgeRow
+            < 1 then
+                Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+                "Commander.Badges.BadgesOrder.LocalBadgeRow must be " ..
+                "greater than 0")
+                CheckFlag = false
+            end
         end
     end
 
@@ -107,22 +107,22 @@ function Levelling:CheckConfig(LevellingConfig)
                 "Commander.NextLevelFormula.Formula must contain " ..
                 "a letter x to signify level as a variable")
             CheckFlag = false
-        end
 
     -- Checks if Commander badges configs are correct
-    elseif LevellingConfig.Commander.Badges.Enabled then
-        if #LevellingConfig.Commander.Badges.CustomBadgesOrder <
-        LevellingConfig.Commander.NextLevelFormula.MaximumLevel then
-            Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
-            "Commander.Badges.CustomBadgesOrder must have more" ..
-            "elements (badges) than the number of self.Levels")
-            CheckFlag = false
-        elseif LevellingConfig.Commander.Badges.BadgesOrder.BadgeRow
-        < 1 then
-            Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
-            "Commander.Badges.BadgesOrder.LocalBadgeRow must be " ..
-            "greater than 0")
-            CheckFlag = false
+        elseif LevellingConfig.Commander.Badges.Enabled then
+            if #LevellingConfig.Commander.Badges.CustomBadgesOrder <
+            LevellingConfig.Commander.NextLevelFormula.MaximumLevel then
+                Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+                "Commander.Badges.CustomBadgesOrder must have more" ..
+                "elements (badges) than the number of self.Levels")
+                CheckFlag = false
+            elseif LevellingConfig.Commander.Badges.BadgesOrder.BadgeRow
+            < 1 then
+                Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
+                "Commander.Badges.BadgesOrder.LocalBadgeRow must be " ..
+                "greater than 0")
+                CheckFlag = false
+            end
         end
     end
     return CheckFlag
@@ -227,54 +227,56 @@ function Levelling:StopXP( Player, GameState )
         return false
     end
 
-    -- Calculate Player XP
-    local PlayerPlaytime = math.Round(Player:GetPlayTime()/60,0) or 0
-    local PlayerScore = Player:GetScore() or 0
-    local PlayerKills = Player:GetKills() or 0
-    local PlayerAssist = Player:GetAssistKills() or 0
+    if Settings.Player.Enabled then
+        -- Calculate Player XP
+        local PlayerPlaytime = math.Round(Player:GetPlayTime()/60,0) or 0
+        local PlayerScore = Player:GetScore() or 0
+        local PlayerKills = Player:GetKills() or 0
+        local PlayerAssist = Player:GetAssistKills() or 0
 
-    PlayerXPAwarded =
-    math.Round(FormulaPlayer.Formula.Time.XPPerMinute *
-        PlayerPlaytime,0) +
-    math.Round(FormulaPlayer.Formula.Score.XPPerScore * PlayerScore,0) +
-    math.Round(FormulaPlayer.Formula.Score.XPPerKill * PlayerKills,0) +
-    math.Round(FormulaPlayer.Formula.Score.XPPerAssist * PlayerAssist,0)
+        PlayerXPAwarded =
+        math.Round(FormulaPlayer.Formula.Time.XPPerMinute *
+            PlayerPlaytime,0) +
+        math.Round(FormulaPlayer.Formula.Score.XPPerScore * PlayerScore,0) +
+        math.Round(FormulaPlayer.Formula.Score.XPPerKill * PlayerKills,0) +
+        math.Round(FormulaPlayer.Formula.Score.XPPerAssist * PlayerAssist,0)
 
-    -- Calculate Commander XP
-    local CommanderPlaytime = math.Round(Player:GetCommanderTime()/60,0) or 0
+        if GameState == 6 and Player:GetTeamNumber() == 1 then
+            PlayerXPAwarded = math.Round(PlayerXPAwarded
+                * FormulaPlayer.Formula.Multipliers.Victory,0)
+        elseif GameState == 7 and Player:GetTeamNumber() == 2 then
+            PlayerXPAwarded = math.Round(PlayerXPAwarded
+                * FormulaPlayer.Formula.Multipliers.Victory,0)
+        end
 
-    CommanderXPAwarded =
-    math.Round(FormulaCommander.Formula.Time.XPPerMinute *
-        CommanderPlaytime,0)
+        PlayerXPAwarded = Clamp(PlayerXPAwarded,0,
+            FormulaPlayer.MaximumAwardedPerRound)
 
-    -- Apply Multipliers
-    local Victory = false
-    if GameState == 6 and Player:GetTeamNumber() == 1 then
-        Victory = true
-    elseif GameState == 7 and Player:GetTeamNumber() == 2 then
-        Victory = true
+        self.Levels:AddPlayerXP( Player, PlayerXPAwarded )
+        self:UpdateLevel( Player, self.Levels:GetPlayerXP( Player ), false)
     end
 
-    if Victory then
-        PlayerXPAwarded = math.Round(PlayerXPAwarded
-            * FormulaPlayer.Formula.Multipliers.Victory,0)
-        CommanderXPAwarded = math.Round(CommanderXPAwarded
-            * FormulaCommander.Formula.Multipliers.Victory,0)
+    if Settings.Commander.Enabled then
+        -- Calculate Commander XP
+        local CommanderPlaytime = math.Round(Player:GetCommanderTime()/60,0) or 0
+
+        CommanderXPAwarded =
+        math.Round(FormulaCommander.Formula.Time.XPPerMinute *
+            CommanderPlaytime,0)
+
+        if GameState == 6 and Player:GetTeamNumber() == 1 then
+            CommanderXPAwarded = math.Round(CommanderXPAwarded
+                * FormulaCommander.Formula.Multipliers.Victory,0)
+        elseif GameState == 7 and Player:GetTeamNumber() == 2 then
+            CommanderXPAwarded = math.Round(CommanderXPAwarded
+                * FormulaCommander.Formula.Multipliers.Victory,0)
+        end
+
+        CommanderXPAwarded = Clamp(CommanderXPAwarded,0,
+            FormulaPlayer.MaximumAwardedPerRound)
+        self.Levels:AddCommanderXP( Player, CommanderXPAwarded)
+        self:UpdateLevel( Player, self.Levels:GetCommanderXP( Player ), true)
     end
-
-    -- Ensure that XP awarded does not go beyond maximum
-    PlayerXPAwarded = Clamp(PlayerXPAwarded,0,
-        FormulaPlayer.MaximumAwardedPerRound)
-    CommanderXPAwarded = Clamp(CommanderXPAwarded,0,
-        FormulaPlayer.MaximumAwardedPerRound)
-
-    -- Add the XP awarded
-    self.Levels:AddPlayerXP( Player, PlayerXPAwarded )
-    self.Levels:AddCommanderXP( Player, CommanderXPAwarded)
-
-    self:UpdateLevel( Player, self.Levels:GetPlayerXP( Player ), false)
-    self:UpdateLevel( Player, self.Levels:GetCommanderXP( Player ), true)
-
     return true
 
 end
@@ -338,7 +340,10 @@ function Levelling:UpdateLevel( Player, CurrentXP, Commander)
         Settings.NextLevelFormula.MaximumLevel)
 
     -- If player's Level has changed, perform badge change
-    if PreviousLevel ~= NewLevel then
+    if PreviousLevel ~= NewLevel and
+        ((Commander and self.Settings.Commander.Badges.Enabled) or
+        self.Settings.Player.Badges.Enabled)  then
+            
         local CustomOrder = Settings.Badges.CustomBadgesOrder
         if CustomOrder and #CustomOrder > 0 then
             if CustomOrder[NewLevel] then

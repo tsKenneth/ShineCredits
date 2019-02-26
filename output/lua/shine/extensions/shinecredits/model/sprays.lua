@@ -100,7 +100,7 @@ end
 -- Sprays:GetEquippedSpray
 -- Returns the player's equipped spray
 -- ============================================================================
-function Sprays:GetEquippedSpray( Player)
+function Sprays:GetEquippedSpray(Player)
     local LocalSpraysFile = self.SpraysFile
     local SteamID = tostring(Player:GetSteamId())
 

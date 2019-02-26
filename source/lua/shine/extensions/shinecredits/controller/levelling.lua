@@ -58,6 +58,7 @@ end
 
 function Levelling:CheckConfig(LevellingConfig)
     local CheckFlag = true
+    local count = 0
 
     -- Check Dependencies
     if self.Badges:GetIsEnabled() == false then
@@ -83,14 +84,17 @@ function Levelling:CheckConfig(LevellingConfig)
 
     -- Checks if Player badges configs are correct
         elseif LevellingConfig.Player.Badges.Enabled then
-            if #LevellingConfig.Player.Badges.CustomBadgesOrder <
-            LevellingConfig.Player.NextLevelFormula.MaximumLevel then
+            count = 0
+            for _ in pairs(LevellingConfig.Player.Badges.CustomBadgesOrder)
+                do count = count + 1
+            end
+
+            if count ~= 0 and count < LevellingConfig.Player.NextLevelFormula.MaximumLevel then
                 Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
-                "Player.Badges.CustomBadgesOrder must have more" ..
+                "Player.Badges.CustomBadgesOrder must have more " ..
                 "elements (badges) than the number of self.Levels")
                 CheckFlag = false
-            elseif LevellingConfig.Player.Badges.BadgesOrder.BadgeRow
-            < 1 then
+            elseif LevellingConfig.Player.Badges.BadgeRow < 1 then
                 Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
                 "Commander.Badges.BadgesOrder.LocalBadgeRow must be " ..
                 "greater than 0")
@@ -110,14 +114,17 @@ function Levelling:CheckConfig(LevellingConfig)
 
     -- Checks if Commander badges configs are correct
         elseif LevellingConfig.Commander.Badges.Enabled then
-            if #LevellingConfig.Commander.Badges.CustomBadgesOrder <
-            LevellingConfig.Commander.NextLevelFormula.MaximumLevel then
+            count = 0
+            for _ in pairs(LevellingConfig.Commander.Badges.CustomBadgesOrder)
+                do count = count + 1
+            end
+
+            if count ~= 0 and count < LevellingConfig.Commander.NextLevelFormula.MaximumLevel then
                 Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
-                "Commander.Badges.CustomBadgesOrder must have more" ..
-                "elements (badges) than the number of self.Levels")
+                "Commander.Badges.CustomBadgesOrder must have more " ..
+                "elements (badges) than the number of self.Levels. ")
                 CheckFlag = false
-            elseif LevellingConfig.Commander.Badges.BadgesOrder.BadgeRow
-            < 1 then
+            elseif LevellingConfig.Commander.Badges.BadgeRow < 1 then
                 Shine:Print("ShineCredits Levelling:CheckConfig() - Error in config, " ..
                 "Commander.Badges.BadgesOrder.LocalBadgeRow must be " ..
                 "greater than 0")
@@ -343,7 +350,7 @@ function Levelling:UpdateLevel( Player, CurrentXP, Commander)
     if PreviousLevel ~= NewLevel and
         ((Commander and self.Settings.Commander.Badges.Enabled) or
         self.Settings.Player.Badges.Enabled)  then
-            
+
         local CustomOrder = Settings.Badges.CustomBadgesOrder
         if CustomOrder and #CustomOrder > 0 then
             if CustomOrder[NewLevel] then

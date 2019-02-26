@@ -360,11 +360,12 @@ end
 function Plugin:SetGameState( Gamerules, NewState, OldState )
     Levelling:SetGameState( Gamerules, NewState, OldState )
     CreditsAwarding:SetGameState( Gamerules, NewState, OldState )
-
 end
 
 -- Called when the map changes
 function Plugin:MapChange()
     Levelling:MapChange()
     CreditsAwarding:MapChange()
+    SprayRedemptions:MapChange()
+    BadgeRedemptions:MapChange()
 end

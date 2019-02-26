@@ -18,7 +18,7 @@ Currentcredits = 0
 function InfoTab.OnInit( Panel, Data )
     Label = SGUI:Create( "Label", Panel )
     Label:SetFont( Fonts.kAgencyFB_Small )
-    Label:SetText( "Under Construction" )
+    Label:SetText( "Made by Sog (2019)" )
     Label:SetPos( Vector( 16, 24, 0 ) )
 
     CreditBalanceLabel = SGUI:Create( "Label", Panel )

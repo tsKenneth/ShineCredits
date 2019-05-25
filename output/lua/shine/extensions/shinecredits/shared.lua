@@ -42,6 +42,12 @@ function Plugin:SetupDataTable()
     -- = Menu =
     -- ========================================================================
     -- General ================================================================
+    self:AddNetworkMessage( "MenuCommand", {
+        RedeemBadge = "string (255)",
+        RedeemSpray = "string (255)",
+        EquipSpray = "string (255)"
+    }, "Client" )
+
     self:AddNetworkMessage( "OpenCreditsMenu", {
         CurrentCredits = "integer (0 to 99999)",
         TotalCredits = "integer (0 to 99999)"
@@ -52,37 +58,32 @@ function Plugin:SetupDataTable()
         TotalCredits = "integer (0 to 99999)"
     }, "Client" )
 
+    self:AddNetworkMessage( "GUINotify", {
+        Message = "string (255)",
+        Duration = "integer (0 to 99999)"
+    }, "Client" )
+
 
     -- Badges =================================================================
     self:AddNetworkMessage( "BadgeData", {
-        Name = "string (25)",
+        Name = "string (255)",
         Description = "string (255)",
         Cost = "integer (0 to 99999)"
     }, "Client" )
-
-    self:AddNetworkMessage( "BadgeRedeemResult", { Badge = "string (25)",
-        Result = "boolean" }
-        , "Client" )
 
     -- Sprays =================================================================
     self:AddNetworkMessage( "SprayData", {
-        Name = "string (25)",
+        Name = "string (255)",
         Description = "string (255)",
         Cost = "integer (0 to 99999)"
     }, "Client" )
 
-    self:AddNetworkMessage( "SprayRedeemResult", { Badge = "string (25)",
-        Result = "boolean" }
-        , "Client" )
-
-    self:AddNetworkMessage( "SprayEquipResult", { Badge = "string (25)",
-        Result = "boolean" }
-        , "Client" )
-
     -- Skins ==================================================================
     -- Command Items ==========================================================
-    -- Sprays =================================================================
-
+    -- Effects ================================================================
+    self:AddNetworkMessage( "CreateTrail", {
+        TrailLink = "string (255)"}
+        , "Client" )
 
 end
 

@@ -299,6 +299,7 @@ function Levelling:StartAllXP()
         self:StartXP(player)
     end
 
+    return true
 end
 
 -- ============================================================================
@@ -314,8 +315,11 @@ function Levelling:StopAllXP(GameState)
 
     for _, player in ipairs(AllPlayers) do
         self:StopXP(player, GameState)
-        self.Levels:SaveLevels()
     end
+
+    self.Levels:SaveLevels()
+
+    return true
 end
 
 -- ============================================================================
@@ -422,10 +426,9 @@ function Levelling:GetAllowedForLeveling( Player )
                 return false
             end
         end
-        return true
-    else
-        return true
     end
+
+    return true
 end
 
 -- ============================================================================

@@ -74,7 +74,23 @@ Plugin.DefaultConfig = {
             },
             Sprays = {
                 Enabled = true,
+                MaxSprayDistance = 4,
+                SprayCooldown = 10,
+                SprayDuration = 10,
                 FileName = "ShineCredits_PlayerSprays.json"
+            },
+            PlayerSkin = {
+                Enabled = true,
+                FileName = "ShineCredits_PlayerSkins.json"
+            },
+            CommanderSkins = {
+                Enabled = true,
+                FileName = "ShineCredits_CommanderSkins.json"
+            },
+            PlayerEffects = {
+                Enabled = true,
+                MaxNumberOfConcurrentEffects = 3,
+                FileName = "ShineCredits_PlayerEffects.json"
             }
         },
         RedemptionMenus = {
@@ -85,8 +101,20 @@ Plugin.DefaultConfig = {
             SpraysMenu = {
                 Enabled = true,
                 FileName = "ShineCredits_SpraysMenu.json"
+            },
+            PlayerSkinsMenu = {
+                Enabled = true,
+                FileName = "ShineCredits_SkinsMenu.json"
+            },
+            CommanderSkinsMenu = {
+                Enabled = true,
+                FileName = "ShineCredits_CommanderSkinsMenu.json"
+            },
+            PlayerEffectsMenu = {
+                Enabled = true,
+                FileName = "ShineCredits_PlayerEffectsMenu.json"
             }
-        },
+        }
     },
     Utility = {
         Notifications = {
@@ -128,9 +156,6 @@ Plugin.DefaultConfig = {
         Sprays = {
             Enabled = true,
             ConfigDebug = true,
-            MaxSprayDistance = 4,
-            SprayCooldown = 10,
-            SprayDuration = 10,
             Commands = {
                 RedeemSpray = {Console = "sc_redeemspray", Chat="redeemspray"},
                 ViewSprays = {Console = "sc_viewspray", Chat="viewspray"},
@@ -140,6 +165,39 @@ Plugin.DefaultConfig = {
                 PrintSpray = {Console = "sc_spray", Chat="spray"}
             }
         },
+        PlayerSkins = {
+            Enabled = true,
+            ConfigDebug = true,
+            Commands = {
+                RedeemSkin = {Console = "sc_redeemskin", Chat="redeemskin"},
+                ViewSkins = {Console = "sc_viewskins", Chat="viewskins"},
+                AddSkin = {Console = "sc_addskin", Chat="addskin"},
+                RemoveSkin = {Console = "sc_removeskin", Chat="removeskin"},
+                EquipSkin = {Console = "sc_equipskin", Chat="equipskin"},
+            }
+        },
+        CommanderSkins = {
+            Enabled = true,
+            ConfigDebug = true,
+            Commands = {
+                RedeemSkin = {Console = "sc_redeemcommskin", Chat="redeemcommskin"},
+                ViewSkins = {Console = "sc_viewcommskins", Chat="viewcommskins"},
+                AddSkin = {Console = "sc_addcommskin", Chat="addcommskin"},
+                RemoveSkin = {Console = "sc_removecommskin", Chat="removecommskin"},
+                EquipSkin = {Console = "sc_equipcommskin", Chat="equipcommskin"},
+            }
+        },
+        PlayerEffects = {
+            Enabled = true,
+            ConfigDebug = true,
+            Commands = {
+                RedeemEffect = {Console = "sc_redeemeffect", Chat="redeemeffect"},
+                ViewEffects = {Console = "sc_vieweffects", Chat="vieweffects"},
+                AddEffect = {Console = "sc_addeffect", Chat="addeffect"},
+                RemoveEffect = {Console = "sc_removeeffect", Chat="removeeffect"},
+                EquipEffect = {Console = "sc_equipeffect", Chat="equipeffect"},
+            }
+        }
     },
     CreditsAwarding = {
         Enabled = true,
@@ -174,7 +232,10 @@ Plugin.DefaultConfig = {
         Commands = {
             SetCredits = {Console  = "sc_setcredits", Chat = "setcredits"},
             ViewCredits = {Console  = "sc_viewcredits", Chat = "viewcredits"},
-            AddCredits = {Console  = "sc_addcredits", Chat = "addcredit"}
+            AddCredits = {Console  = "sc_addcredits", Chat = "addcredit"},
+            CreditsMultiplier = {Console  = "sc_multiplycredits", Chat = "multiplycredits"},
+            TwoXCreditsMultiplier = {Console  = "sc_2xcredits", Chat = "2xcredits"},
+            CheckCreditsMultiplier = {Console  = "sc_checkmultiplier", Chat = "checkmultiplier"}
         }
     },
 
@@ -222,7 +283,7 @@ Plugin.DefaultConfig = {
         Commander = {
             Enabled = true,
             XPFormula = {
-                MaximumAwardedPerRound = 5,
+                MaximumAwardedPerRound = 500,
                 Formula = {
                     Credits = false,
                     Time = {
@@ -285,6 +346,9 @@ function Plugin:Initialise()
     -- Initialise Controllers
     self:InitialiseControllers()
 
+    -- Initialise Playground
+    --self:Playground()
+
 	return true
 end
 
@@ -317,9 +381,25 @@ function Plugin:InitialiseControllers()
 
     CreditsMenu:Initialise(Notifications, {
         Badges=BadgesMenu,
-        Sprays=SpraysMenu
-    },
+        Sprays=SpraysMenu,
+    }, self.Config,
     Credits, self)
+end
+
+function Plugin:Playground()
+    local function EquipTrail(Client)
+        local LocalPlayer = Client:GetControllingPlayer()
+
+        self:SendNetworkMessage( Client, "CreateTrail", {
+            TrailLink = "Sex",
+            }, true )
+
+        Notifications:Notify(LocalPlayer,"Trail Equipped")
+    end
+
+    local EquipTrailCommand = self:BindCommand("sc_equiptrail",
+        "equiptrail", EquipTrail, true, true)
+	EquipTrailCommand:Help( "Equip the specified trail." )
 end
 
 -- ============================================================================
@@ -341,7 +421,6 @@ function Plugin:ClientConnect( client )
     Levels:InitPlayer(LocalPlayer)
     Badges:InitPlayer(LocalPlayer)
     Sprays:InitPlayer(LocalPlayer)
-
 end
 
 

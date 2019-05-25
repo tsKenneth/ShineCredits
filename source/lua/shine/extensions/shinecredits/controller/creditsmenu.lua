@@ -20,15 +20,18 @@ local CreditsMenu = { _version = "0.1.0" }
 -- CreditsMenu:Initialise
 -- Initialise the Credits Menu GUI Controller
 -- ============================================================================
-function CreditsMenu:Initialise(Notifications, Menus, Credits, Plugin)
+function CreditsMenu:Initialise(Notifications, Menus, ConfigFile, Credits, Plugin)
     self.Menus = Menus
     self.Credits = Credits
+    self.ConfigFile = ConfigFile
+    self.Plugin = Plugin
     self:CreateMenuCommands(Plugin)
 end
 
 function CreditsMenu:CreateMenuCommands(Plugin)
     -- ====== Show GUI ======
-    local function SendNetworkMessage( Client )
+    local function SendGUIMessage( Client )
+        -- Init all the menus
         local BadgesMenu = self.Menus.Badges:GetMenu()
         for Badge, Data in pairs(BadgesMenu) do
             Plugin:SendNetworkMessage( Client, "BadgeData",{
@@ -47,6 +50,14 @@ function CreditsMenu:CreateMenuCommands(Plugin)
 
         end
 
+        -- Change the commands if necessary
+        self.Plugin:SendNetworkMessage(Client, "MenuCommand", {
+            RedeemBadge = self.ConfigFile.Redemptions.Badges.Commands.RedeemBadge.Console,
+            RedeemSpray = self.ConfigFile.Redemptions.Sprays.Commands.RedeemSpray.Console,
+            EquipSpray = self.ConfigFile.Redemptions.Sprays.Commands.EquipSpray.Console
+            }, true )
+
+        -- Open the credits menu
         local LocalPlayerCredits = self.Credits:GetPlayerCredits(
             Client:GetControllingPlayer() )
 
@@ -54,9 +65,11 @@ function CreditsMenu:CreateMenuCommands(Plugin)
             CurrentCredits = LocalPlayerCredits.Current,
             TotalCredits = LocalPlayerCredits.Total
         }, true )
+
+
     end
     local CreditsMenuCommand = Plugin:BindCommand( "sc_creditsmenu",
-        "creditsmenu", SendNetworkMessage,true, true  )
+        "creditsmenu", SendGUIMessage,true, true  )
 	CreditsMenuCommand:Help( "Opens the shine credits menu." )
 end
 

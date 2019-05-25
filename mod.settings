@@ -1,40 +1,35 @@
 name        = "[Shine] ShineCredits"
 source_dir  = "source"
 output_dir  = "output"
-description = [=[[Shine Credits System]
-
-[h1]== Requirements ==[/h1]
-Badges Rows from Badges+ mod needs to be set for badges to work.
-Remember to backup your UserConfig.json and badges config file prior to using this mod.
-
-[h1]== Description ==[/h1]
-The Shine Credit Mod is a Shine Plugin that aims to reward player's loyalty and playtime on the servers.
-
-The system reward players for playing on servers with credits that are calculated based on time elapsed. Other formula can also be easily extended (i.e. based on Score or a custom formula specified by server ops). These Credits can then be used to redeemed for Badges and Rights to commands (  Skins to be added in the future ).
-
-Additionally, players will be given level badges according to their total credits accumulated and the points required for each rank is determined by the server operator.
-
-[h1]== Progress ==[/h1]
-The mod is still at its infancy stage and I'm trying my best to keep it updated and completed! Hence, there will be multiple occasions that the Mod will cease to work. Bear with me and do share any suggestions :).
-
-[b]Credits System[/b] OK (Currently only time based and score formula)
-[b]Redemption System[/b] OK (Badges and sprays only)
-[b]GUI:[/b] An interface to allow players to easily manage their redemptions and for admin to add items to the menus
-
-[h1]== Planned Features ==[/h1]
-[b]More content:[/b] Skins, cinematics, projectiles, commands
-
-[h1]== Documentation ==[/h1]
-[url=https://github.com/tsKenneth/ShineCredits] Github Link	[/url]
-
-Server Configs and explanations can be found in the "Wiki" section of the GitHub page (Under Construction)
-
-ModID: 4995658D
-
-[h1]== Credits ==[/h1]
-Special thanks to the NS2 Modding Community on Discord for their patience and guidance.
-Additional thanks to the team of Siege++, especially Nin for his help and direction.
-
+description = [=[[Shine Credits System]
+[h1]== Requirements ==[/h1]
+Badges Rows from Badges+ mod needs to be set for badges to work.
+Remember to backup your UserConfig.json and badges config file prior to using this mod.
+[h1]== Description ==[/h1]
+The Shine Credit Mod is a Shine Plugin that aims to reward player's loyalty and playtime on the servers.
+The system reward players for playing on servers with credits that are calculated based on time elapsed. Other formula can also be easily extended (i.e. based on Score or a custom formula specified by server ops). These Credits can then be used to redeemed for Badges and Rights to commands (  Skins to be added in the future ).
+Additionally, players will be given level badges according to their total credits accumulated and the points required for each rank is determined by the server operator.
+[h1]== Progress ==[/h1]
+The mod is still at its infancy stage and I'm trying my best to keep it updated and completed! Hence, there will be multiple occasions that the Mod will cease to work. Bear with me and do share any suggestions :).
+
+[b]Credits System[/b] OK (Currently only time based and score formula)
+[b]Redemption System[/b] OK (Badges and sprays only)
+[b]GUI:[/b] An interface to allow players to easily manage their redemptions and for admin to add items to the menus
+
+[h1]== Planned Features ==[/h1]
+[b]More content:[/b] Skins, cinematics, projectiles, commands
+
+[h1]== Documentation ==[/h1]
+[url=https://github.com/tsKenneth/ShineCredits] Github Link	[/url]
+
+Server Configs and explanations can be found in the "Wiki" section of the GitHub page (Under Construction)
+
+ModID: 4995658D
+
+[h1]== Credits ==[/h1]
+Special thanks to the NS2 Modding Community on Discord for their patience and guidance.
+Additional thanks to the team of Siege++, especially Nin for his help and direction.
+
 This mod is by no means affiliated to Shine Administration and its development team]=]
 image       = "preview.jpg"
 tag_modtype = "Tool"

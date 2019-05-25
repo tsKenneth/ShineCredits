@@ -18,13 +18,12 @@ local SprayRedemptions = { _version = "0.1.0" }
 SprayRedemptions.RedemptionsFile = {}
 SprayRedemptions.SprayCooldown = {}
 
-
 -- ============================================================================
 -- SprayRedemptions:Initialise
 -- Initialise the Sprays Redemption Menu
 -- ============================================================================
 function SprayRedemptions:Initialise(SprayRedemptionsConfig,
-    Notifications, Sprays, SpraysMenu, Credits, Plugin)
+    Notifications, GUINotifications, Sprays, SpraysMenu, Credits, Plugin)
     -- Load Config File
     self.Settings = SprayRedemptionsConfig
 
@@ -32,6 +31,7 @@ function SprayRedemptions:Initialise(SprayRedemptionsConfig,
     -- Debug mode can be turned off to improve performance
     if self.Settings.Enabled then
         self.Notifications = Notifications
+        self.GUINotifications = GUINotifications
         self.Credits = Credits
         self.SpraysMenu = SpraysMenu
         self.Sprays = Sprays
@@ -103,8 +103,7 @@ end
 -- ============================================================================
 
 function SprayRedemptions:AddSpray( SprayNameArg, DescriptionArg, CostArg )
-    self.SpraysMenu:AddSpray(SprayNameArg, DescriptionArg, CostArg)
-    return true
+    return self.SpraysMenu:AddSpray(SprayNameArg, DescriptionArg, CostArg)
 end
 
 -- ============================================================================
@@ -157,15 +156,14 @@ end
 -- Print the equipped spray onto the surface that player is facing
 -- ============================================================================
 function SprayRedemptions:PrintSpray(player)
-    local origin = player:GetOrigin()
-    local maxSprayDistance = self.Settings.MaxSprayDistance or 4
+    local maxSprayDistance = self.Sprays.Settings.MaxSprayDistance or 4
 
     -- Spam protection
     local SteamID = tostring(player:GetSteamId())
     if (self.SprayCooldown[SteamID] and Shared.GetTime() -
-        self.SprayCooldown[SteamID] < self.Settings.SprayCooldown) then
+        self.SprayCooldown[SteamID] < self.Sprays.Settings.SprayCooldown) then
         self.Notifications:Notify(player, "Spray cooldown: " ..
-            self.Settings.SprayCooldown -
+            self.Sprays.Settings.SprayCooldown -
             math.floor(Shared.GetTime() - self.SprayCooldown[SteamID]))
         return false
     end
@@ -214,14 +212,14 @@ function SprayRedemptions:PrintSpray(player)
 
         angles:BuildFromCoords(coords)
 
-        local nearbyPlayers = GetEntitiesWithinRange("Player", origin, 50)
-        for p = 1, #nearbyPlayers do
-            self.Plugin:SendNetworkMessage( nearbyPlayers[p], "PrintSpray", {
+        local AllPlayers = Shine.GetAllPlayers()
+        for _, otherPlayer in ipairs(AllPlayers) do
+            self.Plugin:SendNetworkMessage( otherPlayer, "PrintSpray", {
                 originX = coords.origin.x, originY = coords.origin.y,
                 originZ = coords.origin.z,
                 yaw = angles.yaw, pitch = angles.pitch, roll = angles.roll,
                 name = EquippedSpray,
-                lifetime = self.Settings.SprayDuration}, true )
+                lifetime = self.Sprays.Settings.SprayDuration}, true )
         end
 
         self.SprayCooldown[SteamID] = Shared.GetTime()
@@ -255,27 +253,17 @@ function SprayRedemptions:CreateMenuCommands(Plugin)
                     "UpdateCredits",{
                 Current = LocalPlayerCredits.Current,
                 Total = LocalPlayerCredits.Total}, true)
-
-                self.Plugin:SendNetworkMessage( Client,
-                    "SprayRedeemResult",{
-                Spray = NewSpray, Result = true}, true)
             else
                 ReturnMessage = "You already own the spray "..
                     "or you have insufficient credits to redeem the spray ("
                     .. SprayNameArg ..")"
-                self.Plugin:SendNetworkMessage( Client,
-                    "SprayRedeemResult",{
-                Spray = NewSpray, Result = false}, true)
             end
 
         else
             ReturnMessage = "There are no sprays with name " .. SprayNameArg
-            self.Plugin:SendNetworkMessage( Client,
-                "SprayRedeemResult",{
-            Spray = NewSpray, Result = false}, true)
         end
 
-        self.Notifications:Notify(LocalPlayer, ReturnMessage)
+        self.GUINotifications:Notify(LocalPlayer,ReturnMessage)
     end
 
     local RedeemSprayCommand = Plugin:BindCommand( Commands.RedeemSpray.Console,
@@ -324,7 +312,7 @@ function SprayRedemptions:CreateMenuCommands(Plugin)
                 SprayNameArg .. " was not added."
         end
 
-        self.Notifications:Notify(LocalPlayer, ReturnMessage)
+        self.GUINotifications:Notify(LocalPlayer,ReturnMessage)
     end
 
 	local AddSprayCommand = Plugin:BindCommand( Commands.AddSpray.Console,
@@ -348,7 +336,7 @@ function SprayRedemptions:CreateMenuCommands(Plugin)
                 .. SprayNameArg .. " not found."
         end
 
-        self.Notifications:Notify(LocalPlayer,ReturnMessage)
+        self.GUINotifications:Notify(LocalPlayer,ReturnMessage)
     end
 
     local RemoveSprayCommand = Plugin:BindCommand( Commands.RemoveSpray.Console,
@@ -369,7 +357,7 @@ function SprayRedemptions:CreateMenuCommands(Plugin)
                 .. SprayNameArg .. " has not been redeemed!"
         end
 
-        self.Notifications:Notify(LocalPlayer,ReturnMessage)
+        self.GUINotifications:Notify(LocalPlayer,ReturnMessage)
     end
 
     local EquipSprayCommand = Plugin:BindCommand( Commands.EquipSpray.Console,

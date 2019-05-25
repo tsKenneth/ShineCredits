@@ -12,11 +12,13 @@
 -- Initialisation
 -- ----------------------------------------------------------------------------
 -- ============================================================================
-local InfoTab = require("shine/extensions/shinecredits/view/tabs/infotab")
 local BadgesTab = require("shine/extensions/shinecredits/view/tabs/badgestab")
 local CommandItemsTab = require("shine/extensions/shinecredits/view/tabs/commanditemstab")
-local SkinsTab = require("shine/extensions/shinecredits/view/tabs/skinstab")
+local PlayerSkinsTab = require("shine/extensions/shinecredits/view/tabs/playerskinstab")
+local CommanderSkinsTab = require("shine/extensions/shinecredits/view/tabs/commanderskinstab")
 local SpraysTab = require("shine/extensions/shinecredits/view/tabs/spraystab")
+local SettingsTab = require("shine/extensions/shinecredits/view/tabs/settingstab")
+local EffectsTab = require("shine/extensions/shinecredits/view/tabs/effectstab")
 
 local Shine = Shine
 local SGUI = Shine.GUI
@@ -29,34 +31,57 @@ CreditsMenu.Commands = {}
 CreditsMenu.Tabs = {}
 CreditsMenu.Data = {}
 
-CreditsMenu.Pos = Vector( -325, -325, 0 )
-CreditsMenu.Size = Vector( 700, 700, 0 )
-
 CreditsMenu.EasingTime = 0.25
 
 function CreditsMenu:Initialise( Client, Plugin )
     self.Client = Client
     self.Plugin = Plugin
+
+    -- Use custom skin for CreditsMenu
+    Shine.GUI.SkinManager:SetSkin("creditsmenu")
+
+    -- Prevent cursor bug when commander log in and log out
+    Shine.Hook.Add( "OnCommanderLogout", "CreditsMenuLogout", function()
+    	CreditsMenu:Close()
+    end )
+    Shine.Hook.Add( "OnCommanderLogin", "CreditsMenuLogin", function()
+    	CreditsMenu:Close()
+    end )
+
     self:InitialiseTabs()
 end
 
 function CreditsMenu:InitialiseTabs()
-    self.Tabs.Info = InfoTab
-    self.Tabs.Badges = BadgesTab
-    self.Tabs.Sprays = SpraysTab
-    self.Tabs.CommandItems = CommandItemsTab
-    self.Tabs.Skins = SkinsTab
+    -- Don't mind the prefix, it is used to sort the items
+    self.Tabs.A_Badges = BadgesTab
+    self.Tabs.B_Patches = PatchesTab
+    self.Tabs.C_PlayerSkins = PlayerSkinsTab
+    self.Tabs.D_CommanderSkins = CommanderSkinsTab
+    self.Tabs.E_Sprays = SpraysTab
+    self.Tabs.F_Effects = EffectsTab
+    self.Tabs.G_CommandItems = CommandItemsTab
+    self.Tabs.H_Settings = SettingsTab
 
     CreditsMenuData.Badges = {}
-    CreditsMenuData.Skins = {}
-    CreditsMenuData.CommandItems = {}
+    CreditsMenuData.Patches = {}
     CreditsMenuData.Sprays = {}
-    CreditsMenuData.Info = {}
+    CreditsMenuData.PlayerSkins = {}
+    CreditsMenuData.CommanderSkins = {}
+    CreditsMenuData.Effects = {}
+    CreditsMenuData.CommandItems = {}
+    CreditsMenuData.Settings = {}
+
 end
 
 -- ============================================================================
 -- Network Messages and Data Table
 -- ============================================================================
+
+function CreditsMenu:ReceiveMenuCommand( Data )
+    BadgesTab.UpdateRedeemCommand( Data.RedeemBadge )
+    SpraysTab.UpdateRedeemCommand( Data.RedeemSpray )
+    SpraysTab.UpdateEquipCommand( Data.EquipSpray )
+end
 
 function CreditsMenu:ReceiveOpenCreditsMenu( Data )
     self.Data.CurrentCredits = Data.CurrentCredits
@@ -65,31 +90,27 @@ function CreditsMenu:ReceiveOpenCreditsMenu( Data )
 end
 
 function CreditsMenu:ReceiveUpdateCredits( Data )
-    InfoTab.CreditsMessageUpdate(Data.CurrentCredits)
     BadgesTab.CreditsMessageUpdate(Data.CurrentCredits)
-    SkinsTab.CreditsMessageUpdate(Data.CurrentCredits)
-    CommandItemsTab.CreditsMessageUpdate(Data.CurrentCredits)
+    PlayerSkinsTab.CreditsMessageUpdate(Data.CurrentCredits)
+    CommanderSkinsTab.CreditsMessageUpdate(Data.CurrentCredits)
     SpraysTab.CreditsMessageUpdate(Data.CurrentCredits)
+    CommandItemsTab.CreditsMessageUpdate(Data.CurrentCredits)
+    EffectsTab.CreditsMessageUpdate(Data.CurrentCredits)
+    SettingsTab.CreditsMessageUpdate(Data.CurrentCredits)
+    PatchesTab.CreditsMessageUpdate(Data.CurrentCredits)
+end
+
+function CreditsMenu:ReceiveGUINotify( Data )
+    SGUI.NotificationManager.AddNotification(
+        Shine.NotificationType.INFO, Data.Message, Data.Duration )
 end
 
 function CreditsMenu:ReceiveBadgeData( Data )
     table.insert(CreditsMenuData.Badges, Data)
 end
 
-function CreditsMenu:ReceiveBadgeRedeemResult( Data )
-    BadgesTab.RedeemMessageUpdate( Data.Result )
-end
-
 function CreditsMenu:ReceiveSprayData( Data )
     table.insert(CreditsMenuData.Sprays, Data)
-end
-
-function CreditsMenu:ReceiveSprayRedeemResult( Data )
-    SpraysTab.RedeemMessageUpdate( Data.Result )
-end
-
-function CreditsMenu:ReceiveSprayEquipResult( Data )
-    SpraysTab.EquipMessageUpdate( Data.Result )
 end
 
 -- ============================================================================
@@ -98,10 +119,17 @@ end
 function CreditsMenu:Create()
 	self.Created = true
 
+    -- Obtain the user's screen size to scale the Window
+    screenWidth = self.Client.GetScreenWidth()
+    screenHeight = self.Client.GetScreenHeight()
+    windowSize = Vector( 900, screenHeight, 0 )
+    windowPos = Vector( 0, 0, 0 )
+
+    -- Create the main tab panel
 	local Window = SGUI:Create( "TabPanel" )
-	Window:SetAnchor( "CentreMiddle" )
-	Window:SetPos( self.Pos )
-	Window:SetSize( self.Size )
+	Window:SetAnchor( "TopLeft" )
+	Window:SetPos( windowPos )
+	Window:SetSize( windowSize )
 
 	self.Window = Window
 
@@ -127,7 +155,7 @@ function CreditsMenu:SetIsVisible( Bool, IgnoreAnim )
 	end
 
 	self:AnimateVisibility( self.Window, Bool, self.Visible, self.EasingTime,
-        self.Pos, IgnoreAnim )
+        windowPos, IgnoreAnim )
 	self.Visible = Bool
 end
 
@@ -205,7 +233,7 @@ function CreditsMenu:AnimateVisibility( Window, Show, Visible,
 
 		if IsAnimated then
 			Window:MoveTo( nil, nil, Vector2(
-                self.Client.GetScreenWidth() - TargetPos.x, TargetPos.y ), 0,
+                -self.Client.GetScreenWidth() + TargetPos.x, TargetPos.y ), 0,
 				EasingTime, nil, math.EaseIn )
 		end
 	end
@@ -270,7 +298,7 @@ end
 function CreditsMenu:PopulateTabs( Window )
 	for Name, Data in SortedPairs( self.Tabs ) do
         Data.Update(CreditsMenuData[Name], self.Data.CurrentCredits)
-		local Tab = Window:AddTab( Name, Data.OnInit )
+		local Tab = Window:AddTab( Data.TabName, Data.OnInit )
 		Data.TabObj = Tab
 	end
 end

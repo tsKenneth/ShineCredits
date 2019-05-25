@@ -22,7 +22,7 @@ BadgeRedemptions.RedemptionsFile = {}
 -- Initialise the Badges Redemption Menu
 -- ============================================================================
 function BadgeRedemptions:Initialise(BadgeRedemptionsConfig,
-    Notifications, Badges, BadgesMenu, Credits, Plugin)
+    Notifications, GUINotifications, Badges, BadgesMenu, Credits, Plugin)
     -- Load Config File
     self.Settings = BadgeRedemptionsConfig
 
@@ -30,6 +30,7 @@ function BadgeRedemptions:Initialise(BadgeRedemptionsConfig,
     -- Debug mode can be turned off to improve performance
     if self.Settings.Enabled then
         self.Notifications = Notifications
+        self.GUINotifications = GUINotifications
         self.Credits = Credits
         self.Badges = Badges
         self.BadgesMenu = BadgesMenu
@@ -104,8 +105,7 @@ function BadgeRedemptions:AddBadge( BadgeNameArg, DescriptionArg, CostArg )
     if self:CheckIfBadgeIsReserved(BadgeNameArg) then
         return false
     else
-        self.BadgesMenu:AddBadge(BadgeNameArg, DescriptionArg, CostArg)
-        return true
+        return self.BadgesMenu:AddBadge(BadgeNameArg, DescriptionArg, CostArg)
     end
 end
 
@@ -155,8 +155,10 @@ function BadgeRedemptions:RedeemBadge( Player, NewBadge )
         for _,row in ipairs(Settings.BadgeRows) do
             self.Badges:AddBadge(Player, NewBadge, row)
         end
+
         self.Credits:SaveCredits()
         self.Badges:SavePlayerBadges()
+
         return true
     else
         return false
@@ -192,27 +194,17 @@ function BadgeRedemptions:CreateMenuCommands(LocalPlugin)
                 CurrentCredits = LocalPlayerCredits.Current,
                 TotalCredits = LocalPlayerCredits.Total}, true)
 
-                self.Plugin:SendNetworkMessage( Client,
-                    "BadgeRedeemResult",{
-                Badge = NewBadge, Result = true}, true)
             else
                 ReturnMessage = "You already own the badge "..
                     "or you have insufficient credits to redeem the badge ("
                     .. BadgeNameArg ..")"
-
-                self.Plugin:SendNetworkMessage( Client,
-                "BadgeRedeemResult",{
-                Badge = NewBadge, Result = false}, false)
             end
 
         else
             ReturnMessage = "There are no badges with name " .. BadgeNameArg
-            self.Plugin:SendNetworkMessage( Client,
-            "BadgeRedeemResult",{
-            Badge = NewBadge, Result = false}, false)
         end
 
-        self.Notifications:Notify(LocalPlayer, ReturnMessage)
+        self.GUINotifications:Notify(LocalPlayer,ReturnMessage)
     end
 
     local RedeemBadgeCommand = LocalPlugin:BindCommand( Commands.RedeemBadge.Console,
@@ -225,6 +217,7 @@ function BadgeRedemptions:CreateMenuCommands(LocalPlugin)
     local function ViewBadges( Client )
         local LocalPlayer = Client:GetControllingPlayer()
         local LocalBadgesMenu = self.BadgesMenu:GetMenu()
+
         self.Notifications:Notify(LocalPlayer,string.format("%s %s %s",
             "[Name]", "Description -", "Cost"))
 

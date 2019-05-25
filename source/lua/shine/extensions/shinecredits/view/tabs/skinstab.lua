@@ -13,18 +13,18 @@
 local SGUI = Shine.GUI
 
 SkinsTab = {}
-CurrentCredits = 0
+SkinsTab.CurrentCredits = 0
 
 function SkinsTab.OnInit( Panel, Data )
-    Label = SGUI:Create( "Label", Panel )
-    Label:SetFont( Fonts.kAgencyFB_Small )
-    Label:SetText( "Under Construction" )
-    Label:SetPos( Vector( 16, 24, 0 ) )
+    SkinsTab.Label = SGUI:Create( "Label", Panel )
+    SkinsTab.Label:SetFont( Fonts.kAgencyFB_Small )
+    SkinsTab.Label:SetText( "Player Skins Menu" )
+    SkinsTab.Label:SetPos( Vector( 16, 24, 0 ) )
 
-    CreditBalanceLabel = SGUI:Create( "Label", Panel )
-    CreditBalanceLabel:SetFont( Fonts.kAgencyFB_Small )
-    CreditBalanceLabel:SetText( "Available Credits: " .. CurrentCredits)
-    CreditBalanceLabel:SetPos( Vector( 350, 25, 0 ) )
+    SkinsTab.CreditBalanceLabel = SGUI:Create( "Label", Panel )
+    SkinsTab.CreditBalanceLabel:SetFont( Fonts.kAgencyFB_Small )
+    SkinsTab.CreditBalanceLabel:SetText( "Available Credits: " .. SkinsTab.CurrentCredits)
+    SkinsTab.CreditBalanceLabel:SetPos( Vector( 350, 25, 0 ) )
 
     if Data and Data.ImportantInformation then
         return true
@@ -32,19 +32,14 @@ function SkinsTab.OnInit( Panel, Data )
 end
 
 function SkinsTab.OnCleanup( Panel )
-    Label = nil
-    CreditBalanceLabel = nil
+    SkinsTab.Label = nil
+    SkinsTab.CreditBalanceLabel = nil
     return { ImportantInformation = true }
 end
 
 function SkinsTab.Update ( Data, NewCurrentCredits )
-    CurrentCredits = NewCurrentCredits
+    SkinsTab.CurrentCredits = NewCurrentCredits
     return true
-end
-
-function SkinsTab.CreditsMessageUpdate( NewCurrentCredits )
-    CurrentCredits = NewCurrentCredits
-    CreditBalanceLabel:SetText( "Available Credits: " .. NewCurrentCredits)
 end
 
 return SkinsTab

@@ -12,11 +12,12 @@
 -- Initialisation
 -- ----------------------------------------------------------------------------
 -- ============================================================================
-local InfoTab = require("shine/extensions/shinecredits/view/tabs/infotab")
 local BadgesTab = require("shine/extensions/shinecredits/view/tabs/badgestab")
 local CommandItemsTab = require("shine/extensions/shinecredits/view/tabs/commanditemstab")
 local SkinsTab = require("shine/extensions/shinecredits/view/tabs/skinstab")
+local CommanderSkinsTab = require("shine/extensions/shinecredits/view/tabs/commanderskinstab")
 local SpraysTab = require("shine/extensions/shinecredits/view/tabs/spraystab")
+local EffectsTab = require("shine/extensions/shinecredits/view/tabs/effectstab")
 
 local Shine = Shine
 local SGUI = Shine.GUI
@@ -41,22 +42,31 @@ function CreditsMenu:Initialise( Client, Plugin )
 end
 
 function CreditsMenu:InitialiseTabs()
-    self.Tabs.Info = InfoTab
+
     self.Tabs.Badges = BadgesTab
+    self.Tabs.Skins = SkinsTab
+    self.Tabs.CommanderSkins = CommanderSkinsTab
     self.Tabs.Sprays = SpraysTab
     self.Tabs.CommandItems = CommandItemsTab
-    self.Tabs.Skins = SkinsTab
+    self.Tabs.Effects = EffectsTab
 
     CreditsMenuData.Badges = {}
     CreditsMenuData.Skins = {}
-    CreditsMenuData.CommandItems = {}
+    CreditsMenuData.CommanderSkins = {}
     CreditsMenuData.Sprays = {}
-    CreditsMenuData.Info = {}
+    CreditsMenuData.CommandItems = {}
+    CreditsMenuData.Effects = {}
 end
 
 -- ============================================================================
 -- Network Messages and Data Table
 -- ============================================================================
+
+function CreditsMenu:ReceiveMenuCommand( Data )
+    BadgesTab.UpdateRedeemCommand( Data.RedeemBadge )
+    SpraysTab.UpdateRedeemCommand( Data.RedeemSpray )
+    SpraysTab.UpdateEquipCommand( Data.EquipSpray )
+end
 
 function CreditsMenu:ReceiveOpenCreditsMenu( Data )
     self.Data.CurrentCredits = Data.CurrentCredits
@@ -65,11 +75,12 @@ function CreditsMenu:ReceiveOpenCreditsMenu( Data )
 end
 
 function CreditsMenu:ReceiveUpdateCredits( Data )
-    InfoTab.CreditsMessageUpdate(Data.CurrentCredits)
     BadgesTab.CreditsMessageUpdate(Data.CurrentCredits)
     SkinsTab.CreditsMessageUpdate(Data.CurrentCredits)
-    CommandItemsTab.CreditsMessageUpdate(Data.CurrentCredits)
+    CommanderSkinsTab.CreditsMessageUpdate(Data.CurrentCredits)
     SpraysTab.CreditsMessageUpdate(Data.CurrentCredits)
+    CommandItemsTab.CreditsMessageUpdate(Data.CurrentCredits)
+    EffectsTab.CreditsMessageUpdate(Data.CurrentCredits)
 end
 
 function CreditsMenu:ReceiveBadgeData( Data )

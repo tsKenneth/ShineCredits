@@ -19,6 +19,7 @@ local Shine = Shine
 local CreditsAwarding = {}
 
 CreditsAwarding.Settings = {}
+CreditsAwarding.CreditsMultiplier = 1
 
 -- ============================================================================
 -- CreditsAwarding:Initialise
@@ -177,6 +178,11 @@ function CreditsAwarding:StopCredits( Player, GameState )
     math.Round(FormulaPlayer.Formula.Score.CreditsPerAssist * Player:GetAssistKills(),0)
 
     -- Apply Multipliers
+    -- For events
+    PlayerCreditsAwarded = math.Round(PlayerCreditsAwarded
+        * self.CreditsMultiplier,0)
+
+    -- For victories
     local Victory = false
     if GameState == 6 and Player:GetTeamNumber() == 1 then
         Victory = true
@@ -232,8 +238,9 @@ function CreditsAwarding:StopAllCredits(GameState)
 
     for _, player in ipairs(AllPlayers) do
         self:StopCredits(player, GameState)
-        self.Credits:SaveCredits()
     end
+
+    self.Credits:SaveCredits()
 end
 
 -- ============================================================================
@@ -276,12 +283,46 @@ function CreditsAwarding:CreateCreditsCommands(Plugin)
     local CommandsFile = self.Settings.Commands
     local Credits = self.Credits
 
+    -- ====== Change Credits Multiplier ======
+    local function ChangeCreditsMultiplier( Client, multiplierAmount )
+        self.CreditsMultiplier = multiplierAmount
+        self.Notifications:NotifyAll("Credits Multiplier has been changed to " ..
+            multiplierAmount)
+    end
+	local ChangeCreditsMultiplierCommand = Plugin:BindCommand(
+        CommandsFile.CreditsMultiplier.Console,
+        CommandsFile.CreditsMultiplier.Chat, ChangeCreditsMultiplier )
+    ChangeCreditsMultiplierCommand:AddParam{ Type = "number", Help = "Multiplier:Float" }
+	ChangeCreditsMultiplierCommand:Help( "Changes the amount of credits awarded in this map" ..
+        "by a multiplier factor")
+
+    -- ====== Double Credits Multiplier ======
+    local function DoubleCreditsMultiplier ( Client )
+        self.CreditsMultiplier = 2
+        self.Notifications:NotifyAll("Credits earned for this map has been doubled.")
+    end
+    local DoubleCreditsMultiplierCommand = Plugin:BindCommand(
+        CommandsFile.TwoXCreditsMultiplier.Console,
+        CommandsFile.TwoXCreditsMultiplier.Chat, DoubleCreditsMultiplier )
+    DoubleCreditsMultiplierCommand:Help( "Double the amount of credits earned in this map")
+
+    -- ====== Check Credits Multiplier ======
+    local function CheckCreditsMultiplier ( Client )
+        local LocalPlayer = Client:GetControllingPlayer()
+        self.Notifications:Notify(LocalPlayer, "Current Multiplier: " ..
+            self.CreditsMultiplier)
+    end
+    local CheckCreditsMultiplierCommand = Plugin:BindCommand(
+        CommandsFile.CheckCreditsMultiplier.Console,
+        CommandsFile.CheckCreditsMultiplier.Chat, CheckCreditsMultiplier, true, true)
+    CheckCreditsMultiplierCommand:Help( "Returns the current bonus credits multiplier applied")
+
     -- ====== Set Credits ======
     local function SetCredits( Client, Target, Amount )
         local LocalPlayer = Client:GetControllingPlayer()
         Credits:SetPlayerCredits( Target:GetControllingPlayer(), Amount, Amount)
         Credits:SaveCredits()
-        self.Notifications:Notify(LocalPlayer, "Credits Set")
+        self.Notifications:Notify(LocalPlayer, "Credits Set for target")
     end
 	local SetCreditsCommand = Plugin:BindCommand( CommandsFile.SetCredits.Console,
         CommandsFile.SetCredits.Chat, SetCredits )
@@ -294,7 +335,7 @@ function CreditsAwarding:CreateCreditsCommands(Plugin)
         local LocalPlayer = Client:GetControllingPlayer()
         Credits:AddPlayerCredits( Target:GetControllingPlayer(), Amount, Amount)
         Credits:SaveCredits()
-        self.Notifications:Notify(LocalPlayer, "Credits Added")
+        self.Notifications:Notify(LocalPlayer, "Credits Added to target")
     end
 	local AddCreditsCommand = Plugin:BindCommand( CommandsFile.AddCredits.Console,
         CommandsFile.AddCredits.Chat, AddCredits )

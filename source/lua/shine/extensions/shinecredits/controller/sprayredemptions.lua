@@ -18,7 +18,6 @@ local SprayRedemptions = { _version = "0.1.0" }
 SprayRedemptions.RedemptionsFile = {}
 SprayRedemptions.SprayCooldown = {}
 
-
 -- ============================================================================
 -- SprayRedemptions:Initialise
 -- Initialise the Sprays Redemption Menu
@@ -157,15 +156,14 @@ end
 -- Print the equipped spray onto the surface that player is facing
 -- ============================================================================
 function SprayRedemptions:PrintSpray(player)
-    local origin = player:GetOrigin()
-    local maxSprayDistance = self.Settings.MaxSprayDistance or 4
+    local maxSprayDistance = self.Sprays.Settings.MaxSprayDistance or 4
 
     -- Spam protection
     local SteamID = tostring(player:GetSteamId())
     if (self.SprayCooldown[SteamID] and Shared.GetTime() -
-        self.SprayCooldown[SteamID] < self.Settings.SprayCooldown) then
+        self.SprayCooldown[SteamID] < self.Sprays.Settings.SprayCooldown) then
         self.Notifications:Notify(player, "Spray cooldown: " ..
-            self.Settings.SprayCooldown -
+            self.Sprays.Settings.SprayCooldown -
             math.floor(Shared.GetTime() - self.SprayCooldown[SteamID]))
         return false
     end
@@ -214,14 +212,14 @@ function SprayRedemptions:PrintSpray(player)
 
         angles:BuildFromCoords(coords)
 
-        local nearbyPlayers = GetEntitiesWithinRange("Player", origin, 50)
-        for p = 1, #nearbyPlayers do
-            self.Plugin:SendNetworkMessage( nearbyPlayers[p], "PrintSpray", {
+        local AllPlayers = Shine.GetAllPlayers()
+        for _, otherPlayer in ipairs(AllPlayers) do
+            self.Plugin:SendNetworkMessage( otherPlayer, "PrintSpray", {
                 originX = coords.origin.x, originY = coords.origin.y,
                 originZ = coords.origin.z,
                 yaw = angles.yaw, pitch = angles.pitch, roll = angles.roll,
                 name = EquippedSpray,
-                lifetime = self.Settings.SprayDuration}, true )
+                lifetime = self.Sprays.Settings.SprayDuration}, true )
         end
 
         self.SprayCooldown[SteamID] = Shared.GetTime()
@@ -258,21 +256,21 @@ function SprayRedemptions:CreateMenuCommands(Plugin)
 
                 self.Plugin:SendNetworkMessage( Client,
                     "SprayRedeemResult",{
-                Spray = NewSpray, Result = true}, true)
+                Spray = SprayNameArg, Result = true}, true)
             else
                 ReturnMessage = "You already own the spray "..
                     "or you have insufficient credits to redeem the spray ("
                     .. SprayNameArg ..")"
                 self.Plugin:SendNetworkMessage( Client,
                     "SprayRedeemResult",{
-                Spray = NewSpray, Result = false}, true)
+                Spray = SprayNameArg, Result = false}, true)
             end
 
         else
             ReturnMessage = "There are no sprays with name " .. SprayNameArg
             self.Plugin:SendNetworkMessage( Client,
                 "SprayRedeemResult",{
-            Spray = NewSpray, Result = false}, true)
+            Spray = SprayNameArg, Result = false}, true)
         end
 
         self.Notifications:Notify(LocalPlayer, ReturnMessage)
@@ -364,9 +362,15 @@ function SprayRedemptions:CreateMenuCommands(Plugin)
         if self.Sprays:EquipSpray(LocalPlayer, SprayNameArg) then
             ReturnMessage = "Spray "
                 .. SprayNameArg .. " equipped."
+            self.Plugin:SendNetworkMessage( Client,
+                "SprayEquipResult",{
+            Spray = SprayNameArg, Result = true}, true)
         else
             ReturnMessage = "Spray "
                 .. SprayNameArg .. " has not been redeemed!"
+            self.Plugin:SendNetworkMessage( Client,
+                "SprayEquipResult",{
+            Spray = SprayNameArg, Result = false}, true)
         end
 
         self.Notifications:Notify(LocalPlayer,ReturnMessage)

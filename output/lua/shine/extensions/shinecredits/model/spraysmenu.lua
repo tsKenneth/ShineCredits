@@ -90,7 +90,6 @@ function SpraysMenu:AddSpray( NewSpray, DescriptionArg, CostArg )
     LocalSpraysMenu[NewSpray] = {Description = DescriptionArg, Cost = CostArg}
     self:SaveSpraysMenu()
     return true
-
 end
 -- ============================================================================
 -- SpraysMenu:RemoveSpray

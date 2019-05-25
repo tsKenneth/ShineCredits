@@ -15,9 +15,20 @@
 -- ----------------------------------------------------------------------------
 -- ============================================================================
 local CreditsMenu = require("shine/extensions/shinecredits/view/creditsmenu")
+local SprayClient = require("shine/extensions/shinecredits/client/sprayclient")
+local TrailClient = require("shine/extensions/shinecredits/client/trailclient")
 
 function Plugin:Initialise()
     CreditsMenu:Initialise( Client, Plugin )
+
+    -- Add Credits Menu to Vote Menu ==========================================
+    Shine.VoteMenu:EditPage( "Main", function(self)
+        self:AddSideButton( "Shine Credits", function()
+            Shared.ConsoleCommand("sc_creditsmenu")
+        Shine.VoteMenu:SetIsVisible(false,false)
+        end )
+    end)
+
 	return true
 end
 
@@ -26,6 +37,11 @@ end
 -- ============================================================================
 
 if Client then
+    -- Credits Menu ===========================================================
+    function Plugin:ReceiveMenuCommand( Data )
+        CreditsMenu:ReceiveMenuCommand( Data )
+    end
+
     function Plugin:ReceiveOpenCreditsMenu( Data )
          CreditsMenu:ReceiveOpenCreditsMenu( Data )
     end
@@ -59,10 +75,12 @@ if Client then
     end
 
     function Plugin:ReceivePrintSpray(message)
-        local origin = Vector(message.originX, message.originY, message.originZ)
-        local coords = Angles(message.pitch, message.yaw, message.roll):GetCoords(origin)
-        Client.CreateTimeLimitedDecal(
-            string.format("ui/sprays/%s.material",message.name),
-            coords, 1.5, message.lifetime)
+        SprayClient:PrintSpray(message)
     end
+
+    -- Player Effects =========================================================
+    function Plugin:ReceiveCreateTrail(message)
+        TrailClient:CreateTrail(Client,message)
+    end
+
 end

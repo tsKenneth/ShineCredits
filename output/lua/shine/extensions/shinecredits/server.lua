@@ -17,6 +17,7 @@
 
 -- Utilities
 local Notifications = require("shine/extensions/shinecredits/utility/notifications")
+local GUINotifications = require("shine/extensions/shinecredits/utility/guinotifications")
 
 -- Models
 local Credits = require("shine/extensions/shinecredits/model/credits")
@@ -37,7 +38,7 @@ local CreditsMenu = require("shine/extensions/shinecredits/controller/creditsmen
 local BadgeRedemptions = require("shine/extensions/shinecredits/controller/badgeredemptions")
 local SprayRedemptions = require("shine/extensions/shinecredits/controller/sprayredemptions")
 
-Plugin.Version = "2.15"
+Plugin.Version = "3.0"
 Plugin.PrintName = "Shine Credits"
 
 Plugin.HasConfig = true
@@ -74,7 +75,27 @@ Plugin.DefaultConfig = {
             },
             Sprays = {
                 Enabled = true,
+                MaxSprayDistance = 4,
+                SprayCooldown = 10,
+                SprayDuration = 10,
                 FileName = "ShineCredits_PlayerSprays.json"
+            },
+            PlayerSkin = {
+                Enabled = true,
+                FileName = "ShineCredits_PlayerSkins.json"
+            },
+            CommanderSkins = {
+                Enabled = true,
+                FileName = "ShineCredits_CommanderSkins.json"
+            },
+            PlayerEffects = {
+                Enabled = true,
+                MaxNumberOfConcurrentEffects = 3,
+                FileName = "ShineCredits_PlayerEffects.json"
+            },
+            Patches = {
+                Enabled = true,
+                FileName = "ShineCredits_Patches.json"
             }
         },
         RedemptionMenus = {
@@ -85,8 +106,24 @@ Plugin.DefaultConfig = {
             SpraysMenu = {
                 Enabled = true,
                 FileName = "ShineCredits_SpraysMenu.json"
+            },
+            PlayerSkinsMenu = {
+                Enabled = true,
+                FileName = "ShineCredits_SkinsMenu.json"
+            },
+            CommanderSkinsMenu = {
+                Enabled = true,
+                FileName = "ShineCredits_CommanderSkinsMenu.json"
+            },
+            PlayerEffectsMenu = {
+                Enabled = true,
+                FileName = "ShineCredits_PlayerEffectsMenu.json"
+            },
+            PatchesMenu = {
+                Enabled = true,
+                FileName = "ShineCredits_PatchesMenu.json"
             }
-        },
+        }
     },
     Utility = {
         Notifications = {
@@ -98,7 +135,11 @@ Plugin.DefaultConfig = {
             Sender = {
                 DefaultName = "[Shine Credits]",
                 NameRGB = {255,20,30}
-            },
+            }
+        },
+        GUINotifications = {
+            Enabled = true,
+            PopupDuration = 10
         }
     },
     Redemptions = {
@@ -128,18 +169,58 @@ Plugin.DefaultConfig = {
         Sprays = {
             Enabled = true,
             ConfigDebug = true,
-            MaxSprayDistance = 4,
-            SprayCooldown = 10,
-            SprayDuration = 10,
             Commands = {
                 RedeemSpray = {Console = "sc_redeemspray", Chat="redeemspray"},
-                ViewSprays = {Console = "sc_viewspray", Chat="viewspray"},
+                ViewSprays = {Console = "sc_viewsprays", Chat="viewsprays"},
                 AddSpray = {Console = "sc_addspray", Chat="addspray"},
                 RemoveSpray = {Console = "sc_removespray", Chat="removespray"},
                 EquipSpray = {Console = "sc_equipspray", Chat="equipspray"},
                 PrintSpray = {Console = "sc_spray", Chat="spray"}
             }
         },
+        PlayerSkins = {
+            Enabled = true,
+            ConfigDebug = true,
+            Commands = {
+                RedeemSkin = {Console = "sc_redeemskin", Chat="redeemskin"},
+                ViewSkins = {Console = "sc_viewskins", Chat="viewskins"},
+                AddSkin = {Console = "sc_addskin", Chat="addskin"},
+                RemoveSkin = {Console = "sc_removeskin", Chat="removeskin"},
+                EquipSkin = {Console = "sc_equipskin", Chat="equipskin"},
+            }
+        },
+        CommanderSkins = {
+            Enabled = true,
+            ConfigDebug = true,
+            Commands = {
+                RedeemSkin = {Console = "sc_redeemcommskin", Chat="redeemcommskin"},
+                ViewSkins = {Console = "sc_viewcommskins", Chat="viewcommskins"},
+                AddSkin = {Console = "sc_addcommskin", Chat="addcommskin"},
+                RemoveSkin = {Console = "sc_removecommskin", Chat="removecommskin"},
+                EquipSkin = {Console = "sc_equipcommskin", Chat="equipcommskin"},
+            }
+        },
+        PlayerEffects = {
+            Enabled = true,
+            ConfigDebug = true,
+            Commands = {
+                RedeemEffect = {Console = "sc_redeemeffect", Chat="redeemeffect"},
+                ViewEffects = {Console = "sc_vieweffects", Chat="vieweffects"},
+                AddEffect = {Console = "sc_addeffect", Chat="addeffect"},
+                RemoveEffect = {Console = "sc_removeeffect", Chat="removeeffect"},
+                EquipEffect = {Console = "sc_equipeffect", Chat="equipeffect"},
+            }
+        },
+        Patches = {
+            Enabled = true,
+            ConfigDebug = true,
+            Commands = {
+                RedeemPatch = {Console = "sc_redeempatch", Chat="redeempatch"},
+                ViewPatches = {Console = "sc_viewpatches", Chat="viewpatches"},
+                AddPatch = {Console = "sc_addpatch", Chat="addpatch"},
+                RemovePatch = {Console = "sc_removepatch", Chat="removepatch"},
+            }
+        }
     },
     CreditsAwarding = {
         Enabled = true,
@@ -174,7 +255,10 @@ Plugin.DefaultConfig = {
         Commands = {
             SetCredits = {Console  = "sc_setcredits", Chat = "setcredits"},
             ViewCredits = {Console  = "sc_viewcredits", Chat = "viewcredits"},
-            AddCredits = {Console  = "sc_addcredits", Chat = "addcredit"}
+            AddCredits = {Console  = "sc_addcredits", Chat = "addcredit"},
+            CreditsMultiplier = {Console  = "sc_multiplycredits", Chat = "multiplycredits"},
+            TwoXCreditsMultiplier = {Console  = "sc_2xcredits", Chat = "2xcredits"},
+            CheckCreditsMultiplier = {Console  = "sc_checkmultiplier", Chat = "checkmultiplier"}
         }
     },
 
@@ -222,7 +306,7 @@ Plugin.DefaultConfig = {
         Commander = {
             Enabled = true,
             XPFormula = {
-                MaximumAwardedPerRound = 5,
+                MaximumAwardedPerRound = 500,
                 Formula = {
                     Credits = false,
                     Time = {
@@ -268,7 +352,7 @@ Plugin.CheckConfigTypes = true
 Plugin.CheckConfigRecursively = true
 
 -- ============================================================================
--- Levelling:Initialise
+-- Plugin:Initialise
 -- Initialise the Shine Credits System
 -- ============================================================================
 
@@ -285,12 +369,25 @@ function Plugin:Initialise()
     -- Initialise Controllers
     self:InitialiseControllers()
 
+    -- Initialise Playground
+    --self:Playground()
+
 	return true
 end
 
+-- ============================================================================
+-- Plugin:InitialiseUtility
+-- Initialise the Utility Subsystems
+-- ============================================================================
 function Plugin:InitialiseUtility()
     Notifications:Initialise(self.Config.Utility.Notifications)
+    GUINotifications:Initialise(self.Config.Utility.GUINotifications, self)
 end
+
+-- ============================================================================
+-- Plugin:InitialiseModels
+-- Initialise the Models used in Shine Credits
+-- ============================================================================
 
 function Plugin:InitialiseModels()
     Credits:Initialise(self.Config.Storage)
@@ -302,24 +399,53 @@ function Plugin:InitialiseModels()
     SpraysMenu:Initialise(self.Config.Storage)
 end
 
+-- ============================================================================
+-- Plugin:InitialiseModels
+-- Initialise the Controllers used in Shine Credits
+-- ============================================================================
 function Plugin:InitialiseControllers()
     Levelling:Initialise(self.Config.Levelling,
-    Notifications ,Badges, Levels, self)
+    Notifications, Badges, Levels, self)
 
     CreditsAwarding:Initialise(self.Config.CreditsAwarding,
     Notifications, Credits, self)
 
     BadgeRedemptions:Initialise(self.Config.Redemptions.Badges,
-    Notifications, Badges, BadgesMenu, Credits, self)
+    Notifications, GUINotifications, Badges, BadgesMenu, Credits, self)
 
     SprayRedemptions:Initialise(self.Config.Redemptions.Sprays,
-    Notifications, Sprays, SpraysMenu, Credits, self)
+    Notifications, GUINotifications, Sprays, SpraysMenu, Credits, self)
 
     CreditsMenu:Initialise(Notifications, {
-        Badges=BadgesMenu,
-        Sprays=SpraysMenu
+        BadgesMenu=BadgesMenu,
+        SpraysMenu=SpraysMenu
     },
+    {
+        Badges=Badges,
+        Sprays=Sprays
+    },
+    self.Config,
     Credits, self)
+end
+
+-- ============================================================================
+-- Plugin:Playground
+-- To test new features, don't mind me here :)
+-- ============================================================================
+function Plugin:Playground()
+    local function EquipTrail(Client)
+        local LocalPlayer = Client:GetControllingPlayer()
+
+        self:SendNetworkMessage( Client, "CreateTrail", {
+            TrailLink = "Sex",
+            }, true )
+
+        Notifications:Notify(LocalPlayer,"Trail Equipped")
+    end
+
+    local EquipTrailCommand = self:BindCommand("sc_equiptrail",
+        "equiptrail", EquipTrail, true, true)
+	EquipTrailCommand:Help( "Equip the specified trail." )
 end
 
 -- ============================================================================
@@ -327,13 +453,11 @@ end
 -- Hooks
 -- ----------------------------------------------------------------------------
 -- ============================================================================
-
 -- ============================================================================
--- Plugin:PostJoinTeam
--- Called when a player joins a team in the midst of a game
--- Used to provide controllers access to Shine Hooks
--- ============================================================================
+-- Plugin:ClientConnect
 -- Called when a player connects
+-- Used to initialise data for players
+-- ============================================================================
 function Plugin:ClientConnect( client )
     local LocalPlayer = client:GetControllingPlayer()
 
@@ -341,11 +465,14 @@ function Plugin:ClientConnect( client )
     Levels:InitPlayer(LocalPlayer)
     Badges:InitPlayer(LocalPlayer)
     Sprays:InitPlayer(LocalPlayer)
-
 end
 
 
--- Called when a player joins a team
+-- ============================================================================
+-- Plugin:PostJoinTeam
+-- Called when a player joins a team in the midst of a game
+-- Used to provide controllers access to Shine Hooks
+-- ============================================================================
 function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force,
      ShineForce )
 
@@ -356,16 +483,23 @@ function Plugin:PostJoinTeam( Gamerules, Player, OldTeam, NewTeam, Force,
      ShineForce )
 end
 
--- Called when game starts or stops
+-- ============================================================================
+-- Plugin:SetGameState
+-- Called when the game starts or stops
+-- Used to perform calculation for xp and credits
+-- ============================================================================
 function Plugin:SetGameState( Gamerules, NewState, OldState )
     Levelling:SetGameState( Gamerules, NewState, OldState )
     CreditsAwarding:SetGameState( Gamerules, NewState, OldState )
 end
 
+-- ============================================================================
+-- Plugin:MapChange
 -- Called when the map changes
+-- ============================================================================
 function Plugin:MapChange()
-    Levelling:MapChange()
-    CreditsAwarding:MapChange()
-    SprayRedemptions:MapChange()
-    BadgeRedemptions:MapChange()
+    --Levelling:MapChange()
+    --CreditsAwarding:MapChange()
+    --SprayRedemptions:MapChange()
+    -- BadgeRedemptions:MapChange()
 end
